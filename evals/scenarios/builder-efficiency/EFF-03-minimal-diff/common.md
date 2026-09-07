@@ -1,0 +1,1 @@
+Complete the EFF-03 fixture task in the target module so the requested behavior and acceptance criteria are satisfied. Preserve neighboring behavior, dependencies, and formatting outside the requested change. Return the required structured report with the diff and focused verification result.

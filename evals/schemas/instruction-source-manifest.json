@@ -1,0 +1,141 @@
+{
+  "manifest_revision": 1,
+  "track": "CONTROLLED_EFFICACY",
+  "sources": [
+    {
+      "source_category": "codex_builtin_system",
+      "relative_path_or_logical_name": "codex system layer (opaque)",
+      "sha256": "NOT_AVAILABLE",
+      "byte_length": null,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "SYSTEM_OPAQUE"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-01-targeted-context/common.md",
+      "sha256": "9dae8284620c3a9f478f92c18c2b498817b238c2d5a4f886bcafd718eba43cae",
+      "byte_length": 320,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-01-targeted-context/treatment.md",
+      "sha256": "70c9bc075f5f6434c933ae00408a7e9c90beff102432927e3fb09a746da3354f",
+      "byte_length": 121,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-02-reuse-before-create/common.md",
+      "sha256": "66079d2ca3bfe71386985d18d47f1f0179bf791549f166eb71305589a8453e8e",
+      "byte_length": 317,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-02-reuse-before-create/treatment.md",
+      "sha256": "dfd0429a3b24f75563139dfc788ee5b5132164a5fb660b406d8272c6c42cb96d",
+      "byte_length": 123,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-03-minimal-diff/common.md",
+      "sha256": "71f3de8aff1e4ed7a60841c19374cc958bbbe0092bfad4f9af934f338f84eb95",
+      "byte_length": 294,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-03-minimal-diff/treatment.md",
+      "sha256": "95ba02c7e60ea3fbad95e6b6c0ab825b84f4c5f3b0fba2af134ec616b3ea3e5e",
+      "byte_length": 131,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-04-delta-rework/common.md",
+      "sha256": "9339f269c0027dfde45ddf76efead87b36f427736d5e4b7701ade29017c5e2d4",
+      "byte_length": 314,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-04-delta-rework/treatment.md",
+      "sha256": "8e213f3a8491bfea92b15a595b7b21d0877b07d857b87fb8d4e01742d8284bd4",
+      "byte_length": 128,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-05-incremental-verification/common.md",
+      "sha256": "2c4302a01c479ebfa9947c993d4c2b85a392aa55002edda12263e9d4fac2a337",
+      "byte_length": 305,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-05-incremental-verification/treatment.md",
+      "sha256": "8a369b6d150039d91de832d117e22d78b9b278c51ca826a38e7568ee1a82886d",
+      "byte_length": 128,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-06-debugging-convergence/common.md",
+      "sha256": "6da8ecf6fb797ebf1186d76d3620f6058541e6d7b95794910ffd9e1363a1b404",
+      "byte_length": 346,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-06-debugging-convergence/treatment.md",
+      "sha256": "c3ba6d39bd39077ebc560dffca394df4a03ad48b99c1c3d844660037006edad5",
+      "byte_length": 126,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    },
+    {
+      "source_category": "common_task_contract",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-07-structured-recovery/common.md",
+      "sha256": "018650358a3d912d0983d2daf45143b29e610eb567633d5c334446dd2b51f9b0",
+      "byte_length": 302,
+      "red_enabled": true,
+      "green_enabled": true,
+      "treatment_classification": "OUTCOME_CONSTRAINTS"
+    },
+    {
+      "source_category": "treatment_instruction",
+      "relative_path_or_logical_name": "evals/scenarios/builder-efficiency/EFF-07-structured-recovery/treatment.md",
+      "sha256": "fb3efa365c67c1c3022d014d3719383aa03d946efc23090e732ac3ce8c677da0",
+      "byte_length": 134,
+      "red_enabled": false,
+      "green_enabled": true,
+      "treatment_classification": "BUILDER_EFFICIENCY_PROTOCOL"
+    }
+  ]
+}

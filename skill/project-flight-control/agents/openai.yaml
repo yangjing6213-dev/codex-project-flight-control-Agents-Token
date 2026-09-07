@@ -1,0 +1,6 @@
+interface:
+  display_name: "Project Flight Control"
+  short_description: "Control complex Codex development with isolated Builder and Verifier roles."
+  default_prompt: "$project-flight-control"
+policy:
+  allow_implicit_invocation: false

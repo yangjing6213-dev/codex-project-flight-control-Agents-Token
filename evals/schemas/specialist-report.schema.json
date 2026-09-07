@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Strict conditional Runtime Specialist report contract.",
+  "type": "object",
+  "required": ["status"],
+  "properties": { "control_run_id":{"type":"string"},"lease_epoch":{"type":"string"},"goal_id":{"type":"string"},"goal_version":{"type":"string"},"milestone_id":{"type":"string"},"milestone_contract_version":{"type":"string"},"revision":{"type":"string"},"sender_role":{"type":"string"},"recipient_role":{"type":"string"},"created_at":{"type":"string"},"evidence_sha": {"type":"string", "pattern":"^[0-9a-f]{40}$"}, "status": {"type":"string", "enum":["FINDING","EVIDENCE_NEEDED","UNRESOLVED"]},"specialist_report_id":{"type":"string"},"specialist_order_id":{"type":"string"},"question":{"type":"string"},"finding":{"type":"string"},"evidence":{"type":"string"},"risk":{"type":"string"},"recommendation":{"type":"string"},"confidence":{"type":"string"},"diagnostics_run":{"type":"string"},"missing_evidence":{"type":"string"},"why_required":{"type":"string"},"requested_scope":{"type":"string"},"requested_diagnostic":{"type":"string"},"known":{"type":"string"},"unknown":{"type":"string"},"evidence_reviewed":{"type":"string"},"why_unresolved":{"type":"string"},"decision_risk":{"type":"string"},"recommended_next_action":{"type":"string"} },
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["control_run_id","lease_epoch","goal_id","goal_version","milestone_id","milestone_contract_version","revision","sender_role","recipient_role","created_at","status", "specialist_report_id", "specialist_order_id", "question", "evidence_sha", "finding", "evidence", "risk", "recommendation", "confidence", "diagnostics_run"],
+      "properties": {
+        "control_run_id":{"type":"string"},"lease_epoch":{"type":"string"},"goal_id":{"type":"string"},"goal_version":{"type":"string"},"milestone_id":{"type":"string"},"milestone_contract_version":{"type":"string"},"revision":{"type":"string"},"sender_role":{"type":"string","enum":["Specialist"]},"recipient_role":{"type":"string","enum":["Goalkeeper"]},"created_at":{"type":"string"},"status": {"type": "string", "enum": ["FINDING"]}, "specialist_report_id": {"type": "string"}, "specialist_order_id": {"type": "string"}, "question": {"type": "string"}, "evidence_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "finding": {"type": "string"}, "evidence": {"type": "string"}, "risk": {"type": "string"}, "recommendation": {"type": "string"}, "confidence": {"type": "string"}, "diagnostics_run": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["control_run_id","lease_epoch","goal_id","goal_version","milestone_id","milestone_contract_version","revision","sender_role","recipient_role","created_at","status", "specialist_report_id", "specialist_order_id", "evidence_sha", "missing_evidence", "why_required", "requested_scope", "requested_diagnostic", "risk"],
+      "properties": {
+        "control_run_id":{"type":"string"},"lease_epoch":{"type":"string"},"goal_id":{"type":"string"},"goal_version":{"type":"string"},"milestone_id":{"type":"string"},"milestone_contract_version":{"type":"string"},"revision":{"type":"string"},"sender_role":{"type":"string","enum":["Specialist"]},"recipient_role":{"type":"string","enum":["Goalkeeper"]},"created_at":{"type":"string"},"status": {"type": "string", "enum": ["EVIDENCE_NEEDED"]}, "specialist_report_id": {"type": "string"}, "specialist_order_id": {"type": "string"}, "evidence_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "missing_evidence": {"type": "string"}, "why_required": {"type": "string"}, "requested_scope": {"type": "string"}, "requested_diagnostic": {"type": "string"}, "risk": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["control_run_id","lease_epoch","goal_id","goal_version","milestone_id","milestone_contract_version","revision","sender_role","recipient_role","created_at","status", "specialist_report_id", "specialist_order_id", "evidence_sha", "known", "unknown", "evidence_reviewed", "why_unresolved", "decision_risk", "recommended_next_action"],
+      "properties": {
+        "control_run_id":{"type":"string"},"lease_epoch":{"type":"string"},"goal_id":{"type":"string"},"goal_version":{"type":"string"},"milestone_id":{"type":"string"},"milestone_contract_version":{"type":"string"},"revision":{"type":"string"},"sender_role":{"type":"string","enum":["Specialist"]},"recipient_role":{"type":"string","enum":["Goalkeeper"]},"created_at":{"type":"string"},"status": {"type": "string", "enum": ["UNRESOLVED"]}, "specialist_report_id": {"type": "string"}, "specialist_order_id": {"type": "string"}, "evidence_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "known": {"type": "string"}, "unknown": {"type": "string"}, "evidence_reviewed": {"type": "string"}, "why_unresolved": {"type": "string"}, "decision_risk": {"type": "string"}, "recommended_next_action": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  ]
+}

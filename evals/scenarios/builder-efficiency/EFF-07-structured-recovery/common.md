@@ -1,0 +1,1 @@
+Complete the EFF-07 fixture task from the persisted contract, BASE_SHA, BUILD_REPORT, REVIEW_REPORT, and STATUS files. Preserve the recorded contract and accepted evidence, satisfy the declared acceptance criteria, and return the required structured report with current diff and verification evidence.

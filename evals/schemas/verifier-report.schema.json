@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Verifier REVIEW_REPORT contract with shared identity, evidence integrity, and independent-command fields.",
+  "type": "object",
+  "required": ["control_run_id", "lease_epoch", "goal_id", "goal_version", "milestone_id", "milestone_contract_version", "revision", "sender_role", "recipient_role", "created_at", "candidate_sha", "alignment_result", "evidence_integrity_result", "technical_result", "environment", "builder_evidence_reused", "independent_commands_run", "observed_results", "version_integrity", "findings", "residual_risks", "specialist_dependency_status", "verdict"],
+  "properties": {
+    "control_run_id": {"type": "string"},
+    "lease_epoch": {"type": "string"},
+    "goal_id": {"type": "string"},
+    "goal_version": {"type": "string"},
+    "milestone_id": {"type": "string"},
+    "milestone_contract_version": {"type": "string"},
+    "revision": {"type": "string"},
+    "sender_role": {"type": "string", "enum": ["Verifier"]},
+    "recipient_role": {"type": "string", "enum": ["Goalkeeper"]},
+    "created_at": {"type": "string"},
+    "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "alignment_result": {"type": "string"},
+    "evidence_integrity_result": {"type": "string"},
+    "technical_result": {"type": "string"},
+    "environment": {"type": "string"},
+    "builder_evidence_reused": {
+      "type": "array",
+      "items": {"type": "object", "required": ["evidence_id", "candidate_sha", "reused", "observed_result"], "properties": {"evidence_id": {"type": "string"}, "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "reused": {"type": "boolean"}, "observed_result": {"type": "string"}}, "additionalProperties": false}
+    },
+    "independent_commands_run": {
+      "type": "array",
+      "items": {"type": "object", "required": ["command", "working_directory", "candidate_sha", "exit_code", "observed_result", "covered_criteria", "evidence_id"], "properties": {"command": {"type": "string"}, "working_directory": {"type": "string"}, "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "exit_code": {"type": "number"}, "observed_result": {"type": "string"}, "covered_criteria": {"type": "string"}, "evidence_id": {"type": "string"}}, "additionalProperties": false}
+    },
+    "observed_results": {"type": "array", "items": {"type": "string"}},
+    "version_integrity": {"type": "object", "required": ["status", "candidate_sha", "tracked_files_unchanged", "head_unchanged", "index_unchanged"], "properties": {"status": {"type": "string"}, "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "tracked_files_unchanged": {"type": "boolean"}, "head_unchanged": {"type": "boolean"}, "index_unchanged": {"type": "boolean"}}, "additionalProperties": false},
+    "findings": {"type": "array", "items": {"anyOf": [
+      {"type": "object", "required": ["finding_id", "finding_type", "severity", "candidate_sha", "related_acceptance_criterion", "related_constraint", "objective_risk", "expected_result", "observed_result", "reproduction_command", "evidence", "impact", "blocking_reason", "suggested_direction", "blocking"], "properties": {"finding_id": {"type": "string"}, "finding_type": {"type": "string"}, "severity": {"type": "string", "enum": ["BLOCKER", "MAJOR"]}, "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "related_acceptance_criterion": {"type": "string"}, "related_constraint": {"type": "string"}, "objective_risk": {"type": "string"}, "expected_result": {"type": "string"}, "observed_result": {"type": "string"}, "reproduction_command": {"type": "string"}, "evidence": {"type": "string"}, "impact": {"type": "string"}, "blocking_reason": {"type": "string"}, "suggested_direction": {"type": "string"}, "blocking": {"type": "boolean", "enum": [true]}}, "additionalProperties": false},
+      {"type": "object", "required": ["finding_id", "finding_type", "severity", "candidate_sha", "related_acceptance_criterion", "related_constraint", "objective_risk", "expected_result", "observed_result", "reproduction_command", "evidence", "impact", "blocking_reason", "suggested_direction", "blocking"], "properties": {"finding_id": {"type": "string"}, "finding_type": {"type": "string"}, "severity": {"type": "string", "enum": ["MINOR"]}, "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "related_acceptance_criterion": {"type": "string"}, "related_constraint": {"type": "string"}, "objective_risk": {"type": "string"}, "expected_result": {"type": "string"}, "observed_result": {"type": "string"}, "reproduction_command": {"type": "string"}, "evidence": {"type": "string"}, "impact": {"type": "string"}, "blocking_reason": {"type": "string"}, "suggested_direction": {"type": "string"}, "blocking": {"type": "boolean", "enum": [false]}}, "additionalProperties": false}
+    ]}},
+    "residual_risks": {"type": "array", "items": {"type": "object", "required": ["risk", "why_non_blocking", "accepted_by", "affected_scope", "future_action"], "properties": {"risk": {"type": "string"}, "why_non_blocking": {"type": "string"}, "accepted_by": {"type": "string"}, "affected_scope": {"type": "string"}, "future_action": {"type": "string"}}, "additionalProperties": false}},
+    "specialist_dependency_status": {"type": "string"},
+    "verdict": {"type": "string", "enum": ["PASS", "FAIL", "PARTIAL", "NOT_RUN"]}
+  },
+  "additionalProperties": false
+}

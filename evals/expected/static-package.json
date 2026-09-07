@@ -1,0 +1,37 @@
+{
+  "checks": [
+    { "id": "package.skill.path", "kind": "required_path", "path": "skill/project-flight-control/SKILL.md" },
+    { "id": "package.skill.entry.metadata", "kind": "skill_entry_metadata" },
+    { "id": "package.agents.policy", "kind": "required_path", "path": "skill/project-flight-control/agents/openai.yaml" },
+    { "id": "package.references.paths", "kind": "required_directory", "path": "skill/project-flight-control/references" },
+    { "id": "package.templates.paths", "kind": "required_directory", "path": "skill/project-flight-control/assets/templates" },
+    { "id": "package.scripts.paths", "kind": "required_directory", "path": "scripts" },
+    { "id": "package.license.release_required", "kind": "release_only_path", "path": "LICENSE" },
+    { "id": "package.skill.frontmatter", "kind": "skill_frontmatter" },
+    { "id": "package.agents.explicit_only", "kind": "agents_explicit_only" },
+    { "id": "package.formal_agents.count", "kind": "formal_agent_tomls" },
+    { "id": "package.custom_agent.fields", "kind": "custom_agent_fields" },
+    { "id": "package.builder.profile", "kind": "builder_profile" },
+    { "id": "package.verifier.profile", "kind": "verifier_profile" },
+    { "id": "package.verifier.schema", "kind": "verifier_report_schema" },
+    { "id": "package.specialist.absent", "kind": "no_specialist_toml" },
+    { "id": "package.builder.efficiency", "kind": "builder_efficiency_terms" },
+    { "id": "package.verifier.evidence", "kind": "verifier_evidence_terms" },
+    { "id": "package.links.integrity", "kind": "reference_template_links" },
+    { "id": "package.powershell.parseable", "kind": "powershell_parseable" },
+    { "id": "package.git.safe", "kind": "forbidden_git_commands" },
+    { "id": "package.drive_letters.absent", "kind": "hard_coded_drive_letters" },
+    { "id": "package.version.consistent", "kind": "version_consistency" },
+    { "id": "package.install.schema", "kind": "install_state_schema" },
+    { "id": "package.forbidden.features", "kind": "forbidden_features" },
+    { "id": "package.doctor.passive", "kind": "doctor_passive" },
+    { "id": "package.prompt_budget.report", "kind": "prompt_budget_report" },
+    { "id": "package.message_contracts.templates", "kind": "message_contracts" },
+    { "id": "package.message_contracts.authority", "kind": "message_contract_authority" },
+    { "id": "package.governance.references", "kind": "governance_references" }
+    ,{ "id": "package.evidence.recovery", "kind": "evidence_recovery" }
+    ,{ "id": "package.windows.runtime", "kind": "windows_runtime" }
+    ,{ "id": "package.specialist.protocol", "kind": "specialist_protocol" }
+    ,{ "id": "package.specialist.schema", "kind": "specialist_schema" }
+  ]
+}

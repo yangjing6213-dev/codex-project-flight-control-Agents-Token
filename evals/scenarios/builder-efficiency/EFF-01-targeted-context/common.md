@@ -1,0 +1,1 @@
+Complete the EFF-01 fixture task. The README, target implementation, and adjacent test define the required behavior. Deliver a correct implementation that satisfies the declared acceptance criteria, preserves unrelated business behavior, and includes the required structured report with the diff and target test result.

@@ -1,0 +1,1 @@
+Complete the EFF-06 fixture task so the seeded failure is corrected and the declared acceptance criteria pass. The two documented hypotheses are the available diagnostic alternatives; do not deliver a third speculative patch. Preserve unrelated behavior and return the required structured report with hypotheses, diff, and verification evidence.

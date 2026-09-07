@@ -1,0 +1,171 @@
+{
+  "eval_contract_revision": 4,
+  "formal_schema_revision": 2,
+  "revision_reason": "CONTROLLED_EFFICACY_ISOLATION_R4",
+  "schemas": {
+    "eval_run": {
+      "relative_path": "evals/schemas/eval-run.schema.json",
+      "sha256": "d28a58bb6f3b081268883ff4cf984b685297b6806fa184044e6e1fe79bb02bd8"
+    },
+    "builder_report": {
+      "relative_path": "evals/schemas/builder-report.schema.json",
+      "sha256": "96020cdc296f788e4a7103f1273fdfcd083b5a3f692e8cd73be2ad9317f1ac89"
+    }
+  },
+  "runner": {
+    "startup_timeout_seconds": 90,
+    "pre_terminal_timeout_seconds": 600,
+    "post_terminal_grace_seconds": 15,
+    "idle_timeout": "DISABLED",
+    "automatic_retries": 0,
+    "model": "gpt-5.6-terra",
+    "reasoning_effort": "medium",
+    "sandbox": "workspace-write",
+    "project_doc_max_bytes": 0,
+    "runner_sha256": "1544a30f25ff5381c4e6a27b6d170ba92c58633a1bf96d035179cf855084eeef",
+    "normalizer_sha256": "1544a30f25ff5381c4e6a27b6d170ba92c58633a1bf96d035179cf855084eeef"
+  },
+  "scenarios": [
+    "EFF-01",
+    "EFF-02",
+    "EFF-03",
+    "EFF-04",
+    "EFF-05",
+    "EFF-06",
+    "EFF-07"
+  ],
+  "project_doc_max_bytes": 0,
+  "scenario_manifests": {
+    "EFF-01": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-01-targeted-context/scenario.json",
+      "sha256": "4f7a30b3b156d0ad4d06772d67280b8b9ca5050f25247d3d8ab200ac8c77ff48",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-01-targeted-context/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-01-targeted-context/treatment.md",
+      "common_prompt_sha256": "9dae8284620c3a9f478f92c18c2b498817b238c2d5a4f886bcafd718eba43cae",
+      "treatment_sha256": "70c9bc075f5f6434c933ae00408a7e9c90beff102432927e3fb09a746da3354f"
+    },
+    "EFF-02": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-02-reuse-before-create/scenario.json",
+      "sha256": "38089c5f03ea70eb1c70c30f9372407c8adea1a232f12b6a83a949b797902ffd",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-02-reuse-before-create/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-02-reuse-before-create/treatment.md",
+      "common_prompt_sha256": "66079d2ca3bfe71386985d18d47f1f0179bf791549f166eb71305589a8453e8e",
+      "treatment_sha256": "dfd0429a3b24f75563139dfc788ee5b5132164a5fb660b406d8272c6c42cb96d"
+    },
+    "EFF-03": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-03-minimal-diff/scenario.json",
+      "sha256": "b725070ce700d7472761ad6c804dfb2b93bcd926fd6f6a19cb31cd9741c757cd",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-03-minimal-diff/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-03-minimal-diff/treatment.md",
+      "common_prompt_sha256": "71f3de8aff1e4ed7a60841c19374cc958bbbe0092bfad4f9af934f338f84eb95",
+      "treatment_sha256": "95ba02c7e60ea3fbad95e6b6c0ab825b84f4c5f3b0fba2af134ec616b3ea3e5e"
+    },
+    "EFF-04": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-04-delta-rework/scenario.json",
+      "sha256": "4ce2d71bfc266c159e730196cb47124ece8a8faf76938d7ae1506651baf15670",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-04-delta-rework/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-04-delta-rework/treatment.md",
+      "common_prompt_sha256": "9339f269c0027dfde45ddf76efead87b36f427736d5e4b7701ade29017c5e2d4",
+      "treatment_sha256": "8e213f3a8491bfea92b15a595b7b21d0877b07d857b87fb8d4e01742d8284bd4"
+    },
+    "EFF-05": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-05-incremental-verification/scenario.json",
+      "sha256": "2c751aefdf37780215e54a0905c5448ace6229ccba43295449e1fa7a8d3c4213",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-05-incremental-verification/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-05-incremental-verification/treatment.md",
+      "common_prompt_sha256": "2c4302a01c479ebfa9947c993d4c2b85a392aa55002edda12263e9d4fac2a337",
+      "treatment_sha256": "8a369b6d150039d91de832d117e22d78b9b278c51ca826a38e7568ee1a82886d"
+    },
+    "EFF-06": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-06-debugging-convergence/scenario.json",
+      "sha256": "bc053d23d0f15f1777c8b78e90688182c2def49b012e7a815823c20f06537b12",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-06-debugging-convergence/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-06-debugging-convergence/treatment.md",
+      "common_prompt_sha256": "6da8ecf6fb797ebf1186d76d3620f6058541e6d7b95794910ffd9e1363a1b404",
+      "treatment_sha256": "c3ba6d39bd39077ebc560dffca394df4a03ad48b99c1c3d844660037006edad5"
+    },
+    "EFF-07": {
+      "relative_path": "evals/scenarios/builder-efficiency/EFF-07-structured-recovery/scenario.json",
+      "sha256": "7540ecf9ac841a8d2527c98ca2116b70ffd92c99832592a824433e3d15816bef",
+      "common_prompt_path": "evals/scenarios/builder-efficiency/EFF-07-structured-recovery/common.md",
+      "treatment_prompt_path": "evals/scenarios/builder-efficiency/EFF-07-structured-recovery/treatment.md",
+      "common_prompt_sha256": "018650358a3d912d0983d2daf45143b29e610eb567633d5c334446dd2b51f9b0",
+      "treatment_sha256": "fb3efa365c67c1c3022d014d3719383aa03d946efc23090e732ac3ce8c677da0"
+    }
+  },
+  "primary_track": "CONTROLLED_EFFICACY",
+  "secondary_track": "OPERATIONAL_PROFILE",
+  "controlled_profile_version": 1,
+  "result_directory_policy": "OUTSIDE_FIXTURE",
+  "red_treatment": "NONE",
+  "green_treatment": "BUILDER_EFFICIENCY_PROTOCOL",
+  "repetitions_per_scenario": 5,
+  "instruction_source_manifest_hash": "8d05c1f704500bc782c62cc8f9cd2bd362916e7a0ccb344eae67e66d4be4f400",
+  "primary_metric": {
+    "name": "files_read_before_first_relevant_edit",
+    "boundary": "FIXTURE_PROJECT_CONTENT_FILES_ONLY",
+    "excluded": [
+      "raw_jsonl",
+      "evidence",
+      "final_output",
+      "stderr",
+      "runner",
+      "schema",
+      "prompt_temp",
+      "profile",
+      "external_skill",
+      "memory",
+      "global_agents",
+      "directory_listing",
+      "git_status",
+      "test_command"
+    ],
+    "evaluation_artifact_counted": false
+  },
+  "runner_authority": [
+    "track",
+    "sample_id",
+    "scenario",
+    "phase",
+    "repetition",
+    "eval_contract_revision",
+    "formal_schema_revision",
+    "treatment_enabled",
+    "model",
+    "reasoning_effort",
+    "sandbox",
+    "profile_fingerprint",
+    "instruction_source_manifest_hash",
+    "fixture_id",
+    "fixture_base_sha",
+    "prompt_hash",
+    "schema_hash",
+    "normalizer_version"
+  ],
+  "model_reported_phase_policy": "PRESERVE_AND_COMPARE",
+  "controlled_profile_policy": {
+    "root": "%LOCALAPPDATA%/ProjectFlightControl/EvalProfile-v1",
+    "auth": "LOGIN_REQUIRED",
+    "default_auth_file_copied_or_linked": false
+  },
+  "r4_deterministic_tests": [
+    "R4-01",
+    "R4-02",
+    "R4-03",
+    "R4-04",
+    "R4-05",
+    "R4-06",
+    "R4-07",
+    "R4-08",
+    "R4-09",
+    "R4-10",
+    "R4-11",
+    "R4-12",
+    "R4-13",
+    "R4-14",
+    "R4-15",
+    "R4-16",
+    "R4-17",
+    "R4-18"
+  ]
+}

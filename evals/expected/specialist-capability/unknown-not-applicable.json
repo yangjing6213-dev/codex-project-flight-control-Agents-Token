@@ -1,0 +1,16 @@
+{
+  "capability_status": "UNKNOWN",
+  "smoke_result": "NOT_RUN_PRECHECK_BLOCKED",
+  "core_status": "READY",
+  "evidence_fingerprint": "sha256:713a0e3c34dfa726ee1228a599c4fea4da91a491a8650ae4c20a5f2e67c2f33d",
+  "model_calls": 0,
+  "scenarios": [
+    {"scenario_id":"SC-21","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"},
+    {"scenario_id":"SC-22","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"},
+    {"scenario_id":"SC-23","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"},
+    {"scenario_id":"SC-25","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"},
+    {"scenario_id":"SC-26","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"},
+    {"scenario_id":"SC-29","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"},
+    {"scenario_id":"SC-30","status":"NOT_APPLICABLE","evidence":"Task13-Step5-precheck"}
+  ]
+}

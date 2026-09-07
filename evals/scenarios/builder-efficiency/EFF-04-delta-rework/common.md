@@ -1,0 +1,1 @@
+Complete the EFF-04 fixture task from the frozen Candidate, persisted BASE_SHA, and narrow Verifier finding. Preserve accepted Candidate behavior, correct the finding, and satisfy the declared acceptance and regression criteria. Return the required structured report with the changed diff and verification result.

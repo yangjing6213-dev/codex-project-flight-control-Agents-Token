@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["Product", "Version", "InstalledAt", "ManagedFiles", "BackupReference", "InstallerVersion", "LastDoctor", "SpecialistCapabilityRecord"],
+  "properties": {
+    "Product": {"type":"string"}, "Version": {"type":"string"}, "InstalledAt": {"type":"string"},
+    "SourceVersion": {"type":["string","null"]}, "SourceCommit": {"type":["string","null"]}, "SourceRoot": {"type":["string","null"]},
+    "ManagedFiles": {"type":"array", "items":{"type":"object", "additionalProperties":false, "required":["DestinationPath","RelativePath","SHA256","SourcePath"], "properties":{"DestinationPath":{"type":"string"},"RelativePath":{"type":"string"},"SHA256":{"type":"string"},"SourcePath":{"type":"string"}}}},
+    "BackupReference": {"type":"string"}, "InstallerVersion": {"type":"string"},
+    "LastDoctor": {"type":["object","null"]}, "SpecialistCapabilityRecord": {"type":["object","null"]}
+  }
+}

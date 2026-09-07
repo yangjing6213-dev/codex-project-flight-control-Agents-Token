@@ -1,0 +1,1 @@
+Complete the EFF-05 fixture task so the target behavior and declared acceptance criteria pass. The seeded dependency signal and the target and module tests define the required verification evidence. Preserve unrelated business behavior and return the required structured report with verification results.

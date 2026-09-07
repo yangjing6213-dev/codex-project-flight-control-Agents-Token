@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ProtocolVersion","RunNonce","RequestId","ProbeScriptStarted","ProbeCompleted","ProcessExecutionPolicy","EffectiveExecutionPolicy","LanguageMode","Fixture","Evidence","External","PathEscapes","PrivateSources","ResultFileWritten","StartedAtUtc","CompletedAtUtc"],
+  "properties": {
+    "ProtocolVersion": {"type":"integer","minimum":1},
+    "RunNonce": {"type":"string","minLength":1},
+    "RequestId": {"type":"string","minLength":1},
+    "ProbeScriptStarted": {"const":true},
+    "ProbeCompleted": {"const":true},
+    "ProcessExecutionPolicy": {"type":"string","minLength":1},
+    "EffectiveExecutionPolicy": {"type":"string","minLength":1},
+    "LanguageMode": {"type":"string","minLength":1},
+    "Fixture": {"$ref":"#/definitions/fixture"},
+    "Evidence": {"$ref":"#/definitions/evidence"},
+    "External": {"$ref":"#/definitions/external"},
+    "PathEscapes": {"$ref":"#/definitions/pathEscapes"},
+    "PrivateSources": {"$ref":"#/definitions/privateSources"},
+    "ResultFileWritten": {"const":true},
+    "StartedAtUtc": {"type":"string","format":"date-time"},
+    "CompletedAtUtc": {"type":"string","format":"date-time"}
+  },
+  "definitions": {
+    "status": {"type":"string","enum":["PASS","DENIED","ALLOWED","NOT_FOUND","NOT_SUPPORTED","ERROR"]},
+    "fixture": {"type":"object","additionalProperties":false,"required":["list","read","create","modify"],"properties":{"list":{"$ref":"#/definitions/status"},"read":{"$ref":"#/definitions/status"},"create":{"$ref":"#/definitions/status"},"modify":{"$ref":"#/definitions/status"}}},
+    "evidence": {"type":"object","additionalProperties":false,"required":["list","exact_file_read","nested_read","write","parent_traversal","absolute_path_read"],"properties":{"list":{"$ref":"#/definitions/status"},"exact_file_read":{"$ref":"#/definitions/status"},"nested_read":{"$ref":"#/definitions/status"},"write":{"$ref":"#/definitions/status"},"parent_traversal":{"$ref":"#/definitions/status"},"absolute_path_read":{"$ref":"#/definitions/status"}}},
+    "external": {"type":"object","additionalProperties":false,"required":["list","read","write"],"properties":{"list":{"$ref":"#/definitions/status"},"read":{"$ref":"#/definitions/status"},"write":{"$ref":"#/definitions/status"}}},
+    "pathEscapes": {"type":"object","additionalProperties":false,"required":["parent","normalized_absolute","case_variant","junction","symlink","reparse_point","provider_path","short_path"],"properties":{"parent":{"$ref":"#/definitions/status"},"normalized_absolute":{"$ref":"#/definitions/status"},"case_variant":{"$ref":"#/definitions/status"},"junction":{"$ref":"#/definitions/status"},"symlink":{"$ref":"#/definitions/status"},"reparse_point":{"$ref":"#/definitions/status"},"provider_path":{"$ref":"#/definitions/status"},"short_path":{"$ref":"#/definitions/status"}}},
+    "privateSources": {"type":"object","additionalProperties":false,"required":["global_agents","memory","skills","default_codex_config","other_projects"],"properties":{"global_agents":{"$ref":"#/definitions/status"},"memory":{"$ref":"#/definitions/status"},"skills":{"$ref":"#/definitions/status"},"default_codex_config":{"$ref":"#/definitions/status"},"other_projects":{"$ref":"#/definitions/status"}}}
+  }
+}

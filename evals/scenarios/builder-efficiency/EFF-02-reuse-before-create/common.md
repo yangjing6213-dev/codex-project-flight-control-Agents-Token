@@ -1,0 +1,1 @@
+Complete the EFF-02 fixture task using the existing repository behavior and declared acceptance criteria. The reusable helper and target module must remain behaviorally correct; do not introduce unrelated business changes. Return the required structured report with the diff, reuse evidence, and focused test result.

@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Builder report contract revision 2; strict structured outputs.",
+  "type": "object",
+  "required": ["scenario_id", "base_sha", "candidate_sha", "verification"],
+  "properties": {
+    "scenario_id": {"type": "string", "pattern": "^EFF-0[1-7]$"},
+    "base_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "candidate_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "verification": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "value"],
+        "properties": {
+          "key": {"type": "string"},
+          "value": {"type": ["string", "number", "boolean", "null"]}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
