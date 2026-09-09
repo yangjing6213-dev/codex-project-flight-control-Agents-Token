@@ -1,3 +1,5 @@
+![Project Flight Control 中文封面](assets/cover-zh.png)
+
 # Project Flight Control
 
 [简体中文](README.md) | [English](README.en.md)
