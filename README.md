@@ -1,5 +1,7 @@
 # Project Flight Control
 
+[简体中文](README.md) | [English](README.en.md)
+
 让 AI 做复杂项目时，有人负责把方向说清楚，有人负责动手，还有人负责检查结果。
 
 > 当前版本：`0.1.0-dev.0`。这是一个可以试用和研究的开发版本，还不是稳定版。
