@@ -4,7 +4,7 @@
 
 When AI works on a complex project, one role keeps the goal clear, another does the work, and a third checks the results.
 
-> Current version: `0.1.0-dev.0`. This is a development version for trying out and studying the workflow. It is not a stable release yet.
+> Current version: `0.1.0-dev.0`.
 
 ## 1. What is this repository?
 
@@ -65,6 +65,16 @@ Project state is saved in Git and project records. You can continue from the act
 
 When something goes wrong, the workflow records the reason, the affected scope, and the next step. Work that has not been verified is not reported as passed.
 
+### Help reduce token usage and project development time
+
+Builder already includes mechanisms for reading context as needed, reusing existing capabilities, making only necessary changes, scaling verification to risk, and reworking failed findings and affected areas. These mechanisms help reduce token usage and project development time by cutting repeated reading, duplicate implementation, and unnecessary rework while retaining required quality and safety checks.
+
+### On-demand Specialist review
+
+The project includes a mechanism for on-demand Specialist review. When a specific question needs specialist judgment, Goalkeeper can arrange a review in a separate temporary workspace tied to a fixed code and evidence version. Specialist provides evidence and advice, with at most one round of additional evidence; Goalkeeper handles the final decision.
+
+This mechanism relies on the runtime to provide independent agents and workspaces. Specialist is a temporary expert used for a specific consultation, not a permanent fourth role. See the [Specialist protocol](skill/project-flight-control/references/specialist-protocol.md) for details.
+
 ## 5. An example
 
 Suppose you want Codex to build a small product with a page, data storage, and tests.
@@ -96,7 +106,18 @@ Blocker: Missing test environment configuration
 Next step: Complete the configuration, then check permissions again
 ```
 
+### Estimating tokens and time
+
+The following is a **hypothetical scenario estimate, not a measured result**, comparing the same workload under the same quality and verification standards. This target scenario assumes a high share of repeated work. Its assumptions are set to illustrate the conditions needed for the targets of about 30% lower token usage and 35% less development time, not to predict actual project results. Token totals include all inputs and outputs from Goalkeeper, Builder, Verifier, and any Specialist used.
+
+- **Tokens — hypothetical scenario estimate, not measured.** Start with 100,000 total tokens. Assume 70% covers repeatable work, half of which can be avoided, then add 5,000 tokens for three-role coordination. The result is `100,000 − 100,000 × 70% × 50% + 5,000 = 70,000 tokens`, a reduction of about **30%**.
+- **Development time — hypothetical scenario estimate, not measured.** Start with 10 hours. Assume 80% is repeated work, half of which can be avoided, then add 0.5 hours for coordination and review. The result is `10 − 10 × 80% × 50% + 0.5 = 6.5 hours`, a reduction of about **35%**.
+
+These numbers illustrate the calculation only. They are not product averages, typical results, or guarantees. Actual outcomes depend on the task, context, and rework needed. Extra overhead from every role must be counted and may offset or even reverse the benefit.
+
 ## 6. Installation
+
+Before installing, prepare Windows 10/11, Windows PowerShell 5.1, Git for Windows, and a local Codex runtime that supports Skills and independent agents. Check access to your chosen model and available usage allowance through your own Codex account.
 
 ### Option 1: Download with Git
 
@@ -205,10 +226,9 @@ By default, each stage stops at a clear checkpoint. Results that have not passed
 ## 10. Things to know
 
 - You must enter `$project-flight-control` to activate it. Ordinary conversations do not trigger it automatically.
-- The current version is `0.1.0-dev.0`. It is for trying out and studying the workflow and has not met the requirements for a stable release.
+- Release verification for the current version is incomplete; it has not met the requirements for a stable release.
 - Strict read isolation on Windows has not been reliably verified. Do not rely on this workflow to protect passwords, keys, customer information, or other sensitive files.
-- Builder Efficiency has passed deterministic checks, but comparisons using real models are not complete. The project therefore does not promise to save tokens or time.
-- Specialist remains an optional capability. Do not assume it is a fixed role available in every environment.
+- Builder Efficiency has passed deterministic checks; comparisons using real models are incomplete. The hypothetical estimates above are not measured results.
 - The Skill uses Git, commits, and separate workspaces to preserve progress. Back up important projects first, and carefully review what you are authorizing before any push, publication, or production operation.
 - AI check results still need your final judgment, especially when accounts, costs, permissions, privacy, or live business operations are involved.
 - This project uses the [MIT License](LICENSE). You can use, modify, and share the code, but you must keep the original copyright and license notices.
