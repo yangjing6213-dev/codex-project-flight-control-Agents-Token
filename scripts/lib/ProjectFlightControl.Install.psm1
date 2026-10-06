@@ -42,6 +42,11 @@ function Invoke-PfcInstallPlan {
     $installed = New-Object System.Collections.Generic.List[string]; $backed = New-Object System.Collections.Generic.List[object]; $manifestBackup = $null
     $phase = 'VALIDATE_SOURCE'
     try {
+        $versionPath = Join-Path $Plan.SourceRoot 'VERSION'
+        Assert-PfcSafePath -Path $versionPath -Root $Plan.SourceRoot -Operation 'source-version' | Out-Null
+        if (-not (Test-Path -LiteralPath $versionPath -PathType Leaf -ErrorAction Stop)) { throw (New-PfcError 'source-version' $versionPath 'restore the source VERSION file') }
+        $sourceVersion = (Get-Content -Raw -LiteralPath $versionPath -ErrorAction Stop).Trim()
+        if ([string]::IsNullOrWhiteSpace($sourceVersion)) { throw (New-PfcError 'source-version' $versionPath 'provide a nonempty source VERSION') }
         foreach ($item in @($Plan.Files)) {
             Assert-PfcSafePath -Path $item.SourcePath -Root $Plan.SourceRoot -Operation 'validate-source' | Out-Null
             if (-not (Test-Path -LiteralPath $item.SourcePath -PathType Leaf -ErrorAction Stop)) { throw (New-PfcError 'validate-source' $item.SourcePath 'restore the source package') }
@@ -77,9 +82,13 @@ function Invoke-PfcInstallPlan {
         }
         $phase = 'WRITE_MANIFEST'
         $managed = @($Plan.Files | ForEach-Object { [pscustomobject]@{ DestinationPath=$_.DestinationPath; RelativePath=$_.RelativePath; SHA256=$_.SourceHash; SourcePath=$_.SourcePath } })
-        $sourceVersion = $null; $versionPath = Join-Path $Plan.SourceRoot 'VERSION'; Assert-PfcSafePath -Path $versionPath -Root $Plan.SourceRoot -Operation 'source-version' | Out-Null; if (Test-Path -LiteralPath $versionPath -PathType Leaf -ErrorAction Stop) { $sourceVersion=(Get-Content -Raw -LiteralPath $versionPath -ErrorAction Stop).Trim() }
-        $sourceCommit = (& git -C $Plan.SourceRoot rev-parse HEAD 2>$null).Trim(); if ($sourceCommit -notmatch '^[0-9a-fA-F]{40}$') { $sourceCommit=$null }
-        $manifest = [pscustomobject]@{ Product='Project Flight Control'; Version='0.1.0-dev.0'; InstalledAt=[DateTime]::UtcNow.ToString('o'); SourceVersion=(Get-PfcSourceIdentity $Plan.SourceRoot); SourceCommit=$sourceCommit; SourceRoot=$Plan.SourceRoot; ManagedFiles=$managed; BackupReference=$backupDir; InstallerVersion='0.1.0-dev.0'; LastDoctor=$null; SpecialistCapabilityRecord=$null }
+        $sourceCommit = $null
+        try { $sourceCommit = (& git -C $Plan.SourceRoot rev-parse HEAD 2>$null).Trim() } catch { $sourceCommit = $null }
+        if ($sourceCommit -notmatch '^[0-9a-fA-F]{40}$') { $sourceCommit=$null }
+        Assert-PfcSafePath -Path $versionPath -Root $Plan.SourceRoot -Operation 'source-version' | Out-Null
+        if ((Get-Content -Raw -LiteralPath $versionPath -ErrorAction Stop).Trim() -cne $sourceVersion) { throw (New-PfcError 'source-version-drift' $versionPath 'restore the original VERSION and retry') }
+        $sourceIdentity = if ($sourceCommit) { '{0}@{1}' -f $sourceVersion,$sourceCommit } else { $sourceVersion }
+        $manifest = [pscustomobject]@{ Product='Project Flight Control'; Version=$sourceVersion; InstalledAt=[DateTime]::UtcNow.ToString('o'); SourceVersion=$sourceIdentity; SourceCommit=$sourceCommit; SourceRoot=$Plan.SourceRoot; ManagedFiles=$managed; BackupReference=$backupDir; InstallerVersion=$sourceVersion; LastDoctor=$null; SpecialistCapabilityRecord=$null }
         $manifestBackup = Join-Path $backupDir 'install-state.json'; if ($ManifestWriter) { & $ManifestWriter $manifest $manifestPath $manifestBackup } else { Write-PfcJsonAtomic -InputObject $manifest -Path $manifestPath -BackupPath $manifestBackup }
         $phase = 'RUN_PASSIVE_DOCTOR'; $doctor = if ($PassiveDoctor) { & $PassiveDoctor $manifest } else { Invoke-PfcPassiveDoctor -UserHome $Plan.UserHome -StateRoot $Plan.StateRoot -RepositoryRoot $Plan.SourceRoot }
         if ($doctor -and $doctor.status -and [string]$doctor.status -notin @('PASS','OK')) { throw (New-PfcError 'run-passive-doctor' $state 'restore the previous install and inspect Doctor evidence') }
@@ -91,6 +100,8 @@ function Invoke-PfcInstallPlan {
             if ($doctor.PSObject.Properties['specialist_record']) { foreach ($p in $doctor.specialist_record.PSObject.Properties) { $record[$p.Name] = $p.Value } }
             $manifest.SpecialistCapabilityRecord = [pscustomobject]$record
         }
+        Assert-PfcSafePath -Path $versionPath -Root $Plan.SourceRoot -Operation 'source-version' | Out-Null
+        if ((Get-Content -Raw -LiteralPath $versionPath -ErrorAction Stop).Trim() -cne $sourceVersion) { throw (New-PfcError 'source-version-drift' $versionPath 'restore the original VERSION and retry') }
         if ($ManifestWriter) { & $ManifestWriter $manifest $manifestPath $manifestBackup } else { Write-PfcJsonAtomic -InputObject $manifest -Path $manifestPath -BackupPath $manifestBackup }
         return [pscustomobject]@{ status='PASS'; installed_files=$installed.ToArray(); backup_reference=$backupDir; rollback_result='NOT_REQUIRED'; manifest_path=$manifestPath; phase='PASS' }
     } catch {

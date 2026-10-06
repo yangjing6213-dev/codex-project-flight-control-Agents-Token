@@ -42,3 +42,9 @@ Specialist receives only a narrow SPECIALIST_ORDER, fixed Evidence SHA, allowed 
 - Explicit invocation always keeps the three-role isolation, including for small tasks; there is no implicit mode downgrade.
 - An unaccepted Candidate never becomes the next milestone Base. Successors inherit only an Accepted Checkpoint SHA.
 - Goalkeeper makes acceptance decisions after Verifier evidence; Builder self-acceptance and Verifier final Goal acceptance are invalid.
+
+## Continuous policy projection
+
+Under explicit Continuous policy, Goalkeeper manages authorization, Wave, risk, validation, gates, issue disposition, budgets and Checkpoint through its existing control authority. Builder receives only the current minimal order, echoes identity before business writes and never self-dispatches a successor. Verifier independently checks authorization, identity, evidence freshness and Wave impact with risk-appropriate verification; Specialist retains its existing limited role. Detailed policy does not duplicate role permissions here.
+
+Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).

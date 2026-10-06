@@ -1,0 +1,188 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "pfc.wave-report.v1"
+      ]
+    },
+    "wave_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "base_checkpoint_sha": {
+      "type": "string",
+      "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+    },
+    "final_checkpoint_sha": {
+      "type": "string",
+      "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+    },
+    "milestones": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "milestone_id": {
+            "type": "string",
+            "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+          },
+          "candidate_sha": {
+            "type": "string",
+            "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+          },
+          "evidence_sha": {
+            "type": "string",
+            "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+          },
+          "acceptance_sha": {
+            "type": "string",
+            "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+          },
+          "accepted_checkpoint_sha": {
+            "type": "string",
+            "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "PASS",
+              "FAIL",
+              "PARTIAL",
+              "NOT_RUN"
+            ]
+          }
+        },
+        "required": [
+          "milestone_id",
+          "candidate_sha",
+          "evidence_sha",
+          "acceptance_sha",
+          "accepted_checkpoint_sha",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "t3_result": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": [
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "ROLLBACK",
+            "UPGRADE_DOWNGRADE",
+            "FAULT_INJECTION",
+            "USER_GATE"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "applicability_reason": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "result": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL",
+            "PARTIAL",
+            "NOT_RUN"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "evidence_id": {
+                "type": "string",
+                "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+              },
+              "candidate_sha": {
+                "type": "string",
+                "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+              },
+              "reference": {
+                "type": "string",
+                "pattern": "\\S"
+              }
+            },
+            "required": [
+              "evidence_id",
+              "candidate_sha",
+              "reference"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "tier",
+        "required",
+        "applicability_reason",
+        "checks",
+        "result",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "stop_gate_result": {
+      "type": "object",
+      "properties": {
+        "stop_gate": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        },
+        "reached": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "stop_gate",
+        "reached"
+      ],
+      "additionalProperties": false
+    },
+    "next_action": {
+      "type": "string",
+      "enum": [
+        "STOP_GATE_REACHED",
+        "COMPLETED",
+        "SELECT_NEXT_WAVE",
+        "BLOCKED",
+        "PAUSE"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "wave_id",
+    "authorization_id",
+    "base_checkpoint_sha",
+    "final_checkpoint_sha",
+    "milestones",
+    "t3_result",
+    "stop_gate_result",
+    "next_action"
+  ],
+  "additionalProperties": false
+}

@@ -2,6 +2,234 @@ Set-StrictMode -Version 2.0
 $moduleRoot = Split-Path -Parent $PSScriptRoot
 Import-Module (Join-Path $PSScriptRoot 'TestHarness.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'PromptBudget.psm1') -Force
+Import-Module (Join-Path $PSScriptRoot 'CodexRunner.psm1')
+
+function Get-PfcV2TemplateBindings {
+    param([System.IO.DirectoryInfo]$RepositoryRoot)
+    $text = Get-Content -Raw -Encoding UTF8 (Join-Path $RepositoryRoot.FullName 'skill/project-flight-control/references/message-contracts.md')
+    $fence = ([string][char]96) * 3
+    $match = [regex]::Match($text, ('(?ms)^## V2 Template Bindings\s+.*?^' + $fence + 'json\s+(?<json>.*?)^' + $fence))
+    if (-not $match.Success) { throw 'V2 template binding authority missing' }
+    return ($match.Groups['json'].Value | ConvertFrom-Json)
+}
+
+# Local control-contract checks, not an extension of the frozen V1 JSON Schema engine.
+# Git ancestry, user approval, preserved bytes and fresh evidence still require runtime gates.
+function Test-PfcV2SchemaValue {
+    param($Value, $Schema)
+    function Test-ExactPropertyNames($Actual, $Node) {
+        if ($Node.type -eq 'object') {
+            if ($null -eq $Actual -or $Actual -is [string] -or $Actual -is [ValueType] -or $Actual -is [Array]) { return $false }
+            $actualNames = @($Actual.PSObject.Properties | ForEach-Object { $_.Name })
+            $allowedNames = @($Node.properties.PSObject.Properties | ForEach-Object { $_.Name })
+            foreach ($name in $Node.required) { if ($actualNames -cnotcontains $name) { return $false } }
+            foreach ($name in $actualNames) { if ($allowedNames -cnotcontains $name) { return $false } }
+            foreach ($property in $Node.properties.PSObject.Properties) {
+                if (-not (Test-ExactPropertyNames $Actual.($property.Name) $property.Value)) { return $false }
+            }
+        } elseif ($Node.type -eq 'array') {
+            if ($Actual -isnot [Array]) { return $false }
+            foreach ($item in $Actual) { if (-not (Test-ExactPropertyNames $item $Node.items)) { return $false } }
+        }
+        return $true
+    }
+    if (-not (Test-ExactPropertyNames $Value $Schema)) { return $false }
+    return (& (Get-Module CodexRunner) { param($v,$s) Test-PfcSchemaValue -Value $v -Schema $s } $Value $Schema)
+}
+
+function Test-PfcV2GitBranch {
+    param([string]$Branch)
+    try {
+        $checked = @(& git check-ref-format --branch $Branch 2>$null)
+        return ($LASTEXITCODE -eq 0 -and $checked.Count -eq 1 -and $checked[0] -ceq $Branch)
+    } catch { return $false }
+}
+
+function Test-PfcV2ControlSemantics {
+    param([string]$Name, $Value)
+    function Test-Date([string]$Text) {
+        $date = [datetime]::MinValue
+        return [datetime]::TryParseExact($Text, 'yyyy-MM-ddTHH:mm:ssZ', [cultureinfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$date)
+    }
+    function Test-Unique($Items) { return @($Items).Count -eq @($Items | Sort-Object -Unique).Count }
+    function Test-Validation($Record) {
+        if ([string]::IsNullOrWhiteSpace($Record.applicability_reason)) { return $false }
+        if ($Record.required -and @($Record.checks).Count -eq 0) { return $false }
+        if ($Record.result -eq 'PASS' -and @($Record.evidence).Count -eq 0) { return $false }
+        return (Test-Unique @($Record.evidence | ForEach-Object { $_.evidence_id }))
+    }
+    try {
+        switch ($Name) {
+            'continuous-authorization' {
+                $triggers = @('CONTRACT_CHANGE','AUTHORIZED_SCOPE_EXHAUSTED','STOP_GATE_REACHED','BASELINE_DRIFT','BRANCH_CHANGE','UNKNOWN_DIRTY_WORKTREE','USER_PAUSE','HARD_BLOCKER','GOAL_CHANGE')
+                return ($Value.goal.goal_version -ge 1 -and
+                    (Test-Date $Value.approval.approved_at) -and
+                    (Test-PfcV2GitBranch $Value.repository.source_branch) -and
+                    (Test-PfcV2GitBranch $Value.repository.write_branch_namespace.TrimEnd('/')) -and
+                    $Value.repository.write_branch_namespace -ceq ('codex/pfc/' + $Value.authorization_id + '/') -and
+                    (@($Value.invalidation_triggers | Sort-Object) -join ',') -ceq (@($triggers | Sort-Object) -join ','))
+            }
+            'wave-plan' {
+                $items = @($Value.milestones)
+                if ($items.Count -lt 1 -or $items.Count -gt 5 -or -not (Test-Unique @($items | ForEach-Object { $_.milestone_id })) -or
+                    -not (Test-Unique @($items | ForEach-Object { $_.exact_branch })) -or
+                    -not (Test-Unique @($items | ForEach-Object { $_.worktree_identity }))) { return $false }
+                if ($Value.wave_validation.tier -cne 'T3' -or -not $Value.wave_validation.required -or -not (Test-Validation $Value.wave_validation)) { return $false }
+                $seen = @()
+                $allIds = @($items | ForEach-Object { $_.milestone_id })
+                foreach ($item in $items) {
+                    if ($item.contract_version -lt 1 -or -not (Test-PfcV2GitBranch $item.exact_branch) -or
+                        -not $item.exact_branch.StartsWith(('codex/pfc/' + $Value.authorization_id + '/'), [StringComparison]::Ordinal)) { return $false }
+                    if ($item.risk_level -eq 'MEDIUM' -and $items.Count -gt 3) { return $false }
+                    if ($item.risk_level -eq 'HIGH' -and $items.Count -ne 1) { return $false }
+                    if (-not (Test-Unique $item.dependencies)) { return $false }
+                    foreach ($dependency in $item.dependencies) { if ($allIds -contains $dependency -and $seen -notcontains $dependency) { return $false } }
+                    $plan = @($item.validation_plan)
+                    if (-not (Test-Unique @($plan | ForEach-Object { $_.tier }))) { return $false }
+                    foreach ($record in $plan) { if (-not (Test-Validation $record)) { return $false } }
+                    $requiredTiers = @($plan | Where-Object required | ForEach-Object { $_.tier })
+                    foreach ($tier in @('T1','T2')) { if ($requiredTiers -notcontains $tier) { return $false } }
+                    if ($item.risk_level -eq 'MEDIUM' -and $requiredTiers -notcontains 'ROLLBACK' -and $requiredTiers -notcontains 'UPGRADE_DOWNGRADE') { return $false }
+                    if ($item.risk_level -eq 'HIGH') { foreach ($tier in @('T3','T4','FAULT_INJECTION','USER_GATE')) { if ($requiredTiers -notcontains $tier) { return $false } } }
+                    $seen += $item.milestone_id
+                }
+                return $true
+            }
+            'continuation-checkpoint' {
+                if ($Value.lease_epoch -lt 1 -or -not (Test-Date $Value.updated_at)) { return $false }
+                if ($Value.previous_accepted_checkpoint_sha -cne 'FIRST_MILESTONE' -and $Value.previous_accepted_checkpoint_sha -cne $Value.current_milestone_base_sha) { return $false }
+                $manifest = $Value.recovery_manifest
+                $paths = @($manifest.allowed_paths) + @($manifest.files | ForEach-Object { $_.path; $_.recovery_copy }) +
+                    @($manifest.git_status | ForEach-Object { $_.path; if ($_.original_path -cne 'NONE') { $_.original_path } })
+                foreach ($path in $paths) {
+                    if ($path -cne $path.ToLowerInvariant().Normalize([Text.NormalizationForm]::FormC)) { return $false }
+                }
+                $statusPaths = @($manifest.git_status | ForEach-Object { $_.path })
+                $filePaths = @($manifest.files | ForEach-Object { $_.path })
+                foreach ($set in @(@{items=$statusPaths},@{items=$filePaths},@{items=@($manifest.allowed_paths)},@{items=@($manifest.files | ForEach-Object { $_.recovery_copy })})) {
+                    if (-not (Test-Unique $set.items)) { return $false }
+                }
+                $expectedFiles = @($statusPaths)
+                foreach ($entry in $manifest.git_status) {
+                    $renamed = $entry.status -match '^[RC]'
+                    if ($renamed -eq ($entry.original_path -ceq 'NONE')) { return $false }
+                    if ($renamed) { $expectedFiles += $entry.original_path }
+                }
+                $expectedFiles = @($expectedFiles | Sort-Object -Unique)
+                if ($expectedFiles.Count -ne $filePaths.Count) { return $false }
+                foreach ($path in $expectedFiles) {
+                    if ($filePaths -cnotcontains $path -or $manifest.allowed_paths -cnotcontains $path) { return $false }
+                }
+                foreach ($entry in $manifest.files) {
+                    if ($entry.size_bytes -lt 0 -or $manifest.allowed_paths -cnotcontains $entry.path) { return $false }
+                }
+                return $true
+            }
+            'issue-classification' {
+                if (@($Value.evidence).Count -lt 1 -or @($Value.affected_scope).Count -lt 1 -or -not (Test-Unique $Value.affected_scope)) { return $false }
+                switch ($Value.classification) {
+                    'PRODUCT_DEFECT' { return ($Value.blocking_scope -eq 'MILESTONE' -and $Value.next_action -eq 'REPAIR') }
+                    'CONTROL_PLANE_DEFECT' { return ($Value.blocking_scope -eq 'GLOBAL' -and $Value.next_action -eq 'FREEZE_CONTROL') }
+                    'SECURITY_OR_DATA_RISK' { return ($Value.blocking_scope -eq 'GLOBAL' -and $Value.next_action -eq 'STOP') }
+                    'UNCLASSIFIED' { return ($Value.blocking_scope -ne 'NONE' -and $Value.next_action -eq 'PAUSE_COLLECT_EVIDENCE') }
+                    'TEST_INFRASTRUCTURE_DEFECT' {
+                        if ($Value.next_action -eq 'CONTINUE') {
+                            return ($Value.blocking_scope -eq 'NONE' -and $Value.fallback_reference -ne 'NONE' -and
+                                @($Value.evidence | Where-Object { $_ -cmatch '^INDEPENDENT_PRODUCT_EVIDENCE: \S' }).Count -gt 0)
+                        }
+                        return ($Value.blocking_scope -ne 'NONE' -and $Value.next_action -eq 'BLOCK_VERIFICATION')
+                    }
+                    { $_ -in @('KNOWN_ENVIRONMENT_LIMITATION','EXTERNAL_DEPENDENCY_FAILURE') } {
+                        if ($Value.next_action -eq 'USE_APPROVED_FALLBACK') { return ($Value.fallback_reference -ne 'NONE' -and $Value.blocking_scope -eq 'NONE') }
+                        return ($Value.blocking_scope -ne 'NONE' -and $Value.next_action -eq 'BLOCK_VERIFICATION')
+                    }
+                    'DOCUMENTATION_ONLY' { return ($Value.next_action -eq 'REPAIR' -and $Value.blocking_scope -eq 'MILESTONE') }
+                }
+                return $false
+            }
+            'wave-report' {
+                $items = @($Value.milestones)
+                if ($items.Count -lt 1 -or $items.Count -gt 5 -or -not (Test-Unique @($items | ForEach-Object { $_.milestone_id }))) { return $false }
+                if ($Value.t3_result.tier -cne 'T3' -or -not $Value.t3_result.required -or -not (Test-Validation $Value.t3_result)) { return $false }
+                $lastAccepted = $Value.base_checkpoint_sha
+                foreach ($item in $items) {
+                    if ($item.result -eq 'PASS') {
+                        if ($item.candidate_sha -cne $item.evidence_sha -or $item.candidate_sha -cne $item.acceptance_sha) { return $false }
+                        $lastAccepted = $item.accepted_checkpoint_sha
+                    }
+                }
+                if ($lastAccepted -cne $Value.final_checkpoint_sha) { return $false }
+                foreach ($evidence in $Value.t3_result.evidence) { if ($evidence.candidate_sha -cne $Value.final_checkpoint_sha) { return $false } }
+                if ($Value.next_action -in @('SELECT_NEXT_WAVE','COMPLETED','STOP_GATE_REACHED')) {
+                    if ($Value.t3_result.result -cne 'PASS' -or @($items | Where-Object { $_.result -cne 'PASS' }).Count -gt 0) { return $false }
+                    if (($Value.next_action -ceq 'STOP_GATE_REACHED') -ne $Value.stop_gate_result.reached) { return $false }
+                }
+                return $true
+            }
+        }
+    } catch { return $false }
+    return $false
+}
+
+function Invoke-PfcV2ContractChecks {
+    param([System.IO.DirectoryInfo]$RepositoryRoot)
+    $results = New-Object System.Collections.Generic.List[object]
+    try {
+        $bindings = Get-PfcV2TemplateBindings $RepositoryRoot
+        $templateRoot = Join-Path $RepositoryRoot.FullName 'skill/project-flight-control/assets/templates'
+        $names = @('continuous-authorization.yaml','wave-plan.yaml','known-limitations.md','blocker-fallback-matrix.md','continuation-checkpoint.md','wave-report.md')
+        if ((@($bindings.created.PSObject.Properties.Name | Sort-Object) -join ',') -cne (@($names | Sort-Object) -join ',')) { throw 'exact six V2 template bindings required' }
+        foreach ($forbidden in @((Join-Path $templateRoot 'project-control-report.md'),(Join-Path $RepositoryRoot.FullName 'evals/schemas/project-control-report.schema.json'))) {
+            if (Test-Path -LiteralPath $forbidden) { throw 'seventh report asset forbidden' }
+        }
+        foreach ($name in $names) {
+            $text = Get-Content -Raw -Encoding UTF8 (Join-Path $templateRoot $name)
+            if ($name -in @('known-limitations.md','blocker-fallback-matrix.md')) {
+                $actual = @([regex]::Matches($text, '(?m)^([^#:\r\n]+):\s*\S.*$') | ForEach-Object { $_.Groups[1].Value.Trim() })
+            } else {
+                $fence = ([string][char]96) * 3
+                $json = $text
+                if (-not $name.EndsWith('.yaml')) {
+                    $blocks = [regex]::Matches($text, ('(?ms)^ {0,3}' + $fence + 'json[ \t]*\r?\n(?<json>.*?)^ {0,3}' + $fence + '[ \t]*(?:\r?\n|\z)'))
+                    $fences = [regex]::Matches($text, ('(?m)^ {0,3}' + $fence + '[^\r\n]*\r?$'))
+                    if ($blocks.Count -ne 1 -or $fences.Count -ne 2) { throw ($name + ' requires exactly one complete JSON fence') }
+                    $json = $blocks[0].Groups['json'].Value
+                }
+                $value = $json | ConvertFrom-Json
+                # Windows PowerShell converts ISO JSON strings into DateTime automatically.
+                # Restore only the contract's two known string timestamp slots before shape validation.
+                if ($name -in @('continuous-authorization.yaml','continuation-checkpoint.md')) {
+                    $timestampField = if ($name -eq 'continuous-authorization.yaml') { 'approved_at' } else { 'updated_at' }
+                    if ($json -notmatch ('"' + $timestampField + '"\s*:\s*"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"')) { throw ($name + ' invalid timestamp serialization') }
+                }
+                if ($name -eq 'continuous-authorization.yaml' -and $value.approval.approved_at -is [datetime]) {
+                    $value.approval.approved_at = $value.approval.approved_at.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+                }
+                if ($name -eq 'continuation-checkpoint.md' -and $value.updated_at -is [datetime]) {
+                    $value.updated_at = $value.updated_at.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+                }
+                $actual = @($value.PSObject.Properties.Name)
+                $schemaName = [IO.Path]::GetFileNameWithoutExtension($name)
+                $schemaPath = Join-Path $RepositoryRoot.FullName ('evals/schemas/' + $schemaName + '.schema.json')
+                $schema = Get-Content -Raw -Encoding UTF8 $schemaPath | ConvertFrom-Json
+                if ((Get-PfcStrictSchemaPreflight $schemaPath).strict_schema_preflight -cne 'PASS' -or
+                    -not (Test-PfcV2SchemaValue -Value $value -Schema $schema) -or
+                    -not (Test-PfcV2ControlSemantics $schemaName $value)) { throw ($name + ' invalid control contract') }
+                if ((@($schema.properties.PSObject.Properties.Name | Sort-Object) -join ',') -cne (@($bindings.created.$name | Sort-Object) -join ',')) { throw ($name + ' schema fields differ from authority') }
+            }
+            if ((@($actual | Sort-Object) -join ',') -cne (@($bindings.created.$name | Sort-Object) -join ',')) { throw ($name + ' fields differ from authority') }
+        }
+        $issuePath = Join-Path $RepositoryRoot.FullName 'evals/schemas/issue-classification.schema.json'
+        if ((Get-PfcStrictSchemaPreflight $issuePath).strict_schema_preflight -cne 'PASS') { throw 'issue-classification schema missing or non-strict' }
+        $project = Get-Content -Raw -Encoding UTF8 (Join-Path $templateRoot 'project.md')
+        if ($project -notmatch '(?m)^# PROJECT_CONTROL_REPORT$') { throw 'project.md must render fixed PROJECT_CONTROL_REPORT' }
+        $results.Add((New-PfcResult -ScenarioId 'package.v2.control-contracts' -Status 'PASS' -Message 'six templates, five strict schemas and authority projections verified'))
+    } catch {
+        $results.Add((New-PfcResult -ScenarioId 'package.v2.control-contracts' -Status 'FAIL' -Message $_.Exception.Message))
+    }
+    return $results.ToArray()
+}
+
 
 function Test-PfcEvidenceRecoveryRules {
     param([string]$Text = '')
@@ -34,8 +262,13 @@ function Test-PfcWindowsRuntimeRules {
 
 function Get-PfcTextFiles {
     param([System.IO.DirectoryInfo]$Root)
+    $historicalReport = Join-Path $Root.FullName 'task-3-report.md'
+    $collaborationRoot = (Join-Path $Root.FullName '.superpowers') + [IO.Path]::DirectorySeparatorChar
     Get-ChildItem -LiteralPath $Root.FullName -Recurse -File | Where-Object {
-        $_.FullName -notmatch '\\.git\\|\\.pfc-eval-results\\|\\tmp\\' -and $_.Extension -in @('.md','.yaml','.yml','.toml','.ps1','.psm1','.json','.txt')
+        $_.FullName -notmatch '\\.git\\|\\.pfc-eval-results\\|\\tmp\\' -and
+        -not $_.FullName.StartsWith($collaborationRoot,[StringComparison]::OrdinalIgnoreCase) -and
+        $_.FullName -ne $historicalReport -and
+        $_.Extension -in @('.md','.yaml','.yml','.toml','.ps1','.psm1','.json','.txt')
     }
 }
 
@@ -75,6 +308,314 @@ function Test-PfcForbiddenGitScript {
     return $false
 }
 
+function Get-PfcV2ReferenceTexts {
+    param([string]$ReferenceRoot)
+    $texts = @{}
+    if (-not (Test-Path -LiteralPath $ReferenceRoot -PathType Container)) { return $texts }
+    $root = (Get-Item -LiteralPath $ReferenceRoot).FullName.TrimEnd([IO.Path]::DirectorySeparatorChar)
+    foreach ($file in @(Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.md')) {
+        $name = $file.FullName.Substring($root.Length + 1).Replace('\','/')
+        # The root message contract legitimately defines fields; no other reference is exempt.
+        if ($name -eq 'message-contracts.md') { continue }
+        $texts[$name] = Get-Content -Raw -Encoding UTF8 -LiteralPath $file.FullName
+    }
+    return $texts
+}
+
+function Test-PfcV2ReferenceRules {
+    param([hashtable]$Texts, [ValidateSet('ownership','links','authority')][string]$Rule)
+    $owners = @{
+        'continuous-execution.md' = @('Activation and Canonical Sources','Stable Authorization and Runtime Lease','Pre-write Identity Gate','Pre-review Identity Gate','Wave Lifecycle','T3 PASS Transition Order')
+        'risk-validation-policy.md' = @('Risk Matrix','Validation Tiers')
+        'blocker-classification.md' = @('Issue Disposition','Independent Repair Limits')
+        'readiness-and-recovery.md' = @('Readiness','Recovery Sequence','No-Candidate Resume','Candidate Rework')
+    }
+    $routes = @{
+        'orchestration-protocol.md' = @('continuous-execution.md','risk-validation-policy.md','blocker-classification.md')
+        'modes-and-state-machine.md' = @('continuous-execution.md')
+        'roles-and-authority.md' = @('continuous-execution.md')
+        'git-and-worktrees.md' = @('continuous-execution.md','readiness-and-recovery.md')
+        'evidence-and-recovery.md' = @('readiness-and-recovery.md','blocker-classification.md')
+        'windows-runtime.md' = @('continuous-execution.md','readiness-and-recovery.md')
+    }
+    $predicates = @{
+        'continuous-execution.md' = 'explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE'
+        'risk-validation-policy.md' = 'explicit Continuous policy is active and risk or validation selection is needed'
+        'blocker-classification.md' = 'explicit Continuous policy is active and issue classification is needed'
+        'readiness-and-recovery.md' = 'explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed'
+    }
+    $missing = New-Object System.Collections.Generic.List[string]
+    if ($Rule -eq 'ownership') {
+        foreach ($name in @($owners.Keys | Sort-Object)) {
+            if (-not $Texts.ContainsKey($name)) { $missing.Add('missing V2 reference: ' + $name); continue }
+            foreach ($heading in $owners[$name]) {
+                $pattern = '(?m)^## ' + [regex]::Escape($heading) + '\s*$'
+                if ([regex]::Matches($Texts[$name], $pattern).Count -ne 1) { $missing.Add($name + ': required section ' + $heading) }
+                foreach ($other in @($Texts.Keys | Where-Object { $_ -ne $name })) {
+                    if ($Texts[$other] -match $pattern) { $missing.Add($other + ': duplicate owner of ' + $heading) }
+                }
+            }
+        }
+    }
+    if ($Rule -eq 'links') {
+        foreach ($name in @($routes.Keys | Sort-Object)) {
+            foreach ($target in $routes[$name]) {
+                $pattern = '(?m)^Only when ' + [regex]::Escape($predicates[$target]) + ': \[' + [regex]::Escape($target) + '\]\(' + [regex]::Escape($target) + '\)\.\s*$'
+                if (-not $Texts.ContainsKey($name) -or [regex]::Matches($Texts[$name], $pattern).Count -ne 1) { $missing.Add($name + ': conditional link to ' + $target) }
+            }
+            if ($Texts.ContainsKey($name)) {
+                foreach ($line in @($Texts[$name] -split "`r?`n")) {
+                    foreach ($target in $owners.Keys) {
+                        if ($line -match [regex]::Escape($target) -and $line -notmatch ('^Only when ' + [regex]::Escape($predicates[$target]) + ': ')) { $missing.Add($name + ': unconditional or wrong-predicate V2 link') }
+                    }
+                }
+            }
+        }
+    }
+    if ($Rule -eq 'authority') {
+        $paragraphOwners = @{}
+        foreach ($name in @($Texts.Keys | Sort-Object)) {
+            $body = $Texts[$name]
+            if ($owners.ContainsKey($name) -and $body -notmatch '\[message-contracts\.md\]\(message-contracts\.md\)') { $missing.Add($name + ': field authority link') }
+            if ($body -match '(?im)^\s*(Required root fields:|Exact property paths|##+\s+(Required fields by message|V2 Template Bindings))|"(?:schema_version|additionalProperties)"\s*:') { $missing.Add($name + ': duplicate field definitions') }
+            if ($body -match '(?i)(?:this reference|this document)\s+(?:is|defines)\s+(?:the\s+)?(?:only\s+)?field[- ]definition authority') { $missing.Add($name + ': competing field authority') }
+            foreach ($paragraph in @($body -split '(?:\r?\n){2,}')) {
+                $proseLines = @($paragraph -split "`r?`n" | Where-Object { $_.Trim() -and $_ -notmatch '^\s{0,3}#{1,6}(?:\s|$)' -and $_ -notmatch '^Only when .+: \[[^\]]+\.md\]\([^)]+\)\.\s*$' })
+                if ($proseLines.Count -eq 0) { continue }
+                $normalized = (($proseLines -join ' ') -replace '\s+', ' ').Trim()
+                if ($normalized.Length -lt 160) { continue }
+                if ($paragraphOwners.ContainsKey($normalized) -and $paragraphOwners[$normalized] -ne $name) { $missing.Add($name + ': duplicate protocol prose from ' + $paragraphOwners[$normalized]) }
+                else { $paragraphOwners[$normalized] = $name }
+            }
+        }
+    }
+    [pscustomobject]@{ Passed = ($missing.Count -eq 0); Missing = @($missing.ToArray()) }
+}
+
+function Test-PfcV2ReferenceNegatives {
+    # Independent positive fixture: mutations must fail their own rule, not a missing-file rule.
+    $valid = @{
+        'continuous-execution.md' = "[message-contracts.md](message-contracts.md)`n## Activation and Canonical Sources`n## Stable Authorization and Runtime Lease`n## Pre-write Identity Gate`n## Pre-review Identity Gate`n## Wave Lifecycle`n## T3 PASS Transition Order"
+        'risk-validation-policy.md' = "[message-contracts.md](message-contracts.md)`n## Risk Matrix`n## Validation Tiers"
+        'blocker-classification.md' = "[message-contracts.md](message-contracts.md)`n## Issue Disposition`n## Independent Repair Limits"
+        'readiness-and-recovery.md' = "[message-contracts.md](message-contracts.md)`n## Readiness`n## Recovery Sequence`n## No-Candidate Resume`n## Candidate Rework"
+        'orchestration-protocol.md' = "Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).`nOnly when explicit Continuous policy is active and risk or validation selection is needed: [risk-validation-policy.md](risk-validation-policy.md).`nOnly when explicit Continuous policy is active and issue classification is needed: [blocker-classification.md](blocker-classification.md)."
+        'modes-and-state-machine.md' = 'Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).'
+        'roles-and-authority.md' = 'Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).'
+        'git-and-worktrees.md' = "Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).`nOnly when explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed: [readiness-and-recovery.md](readiness-and-recovery.md)."
+        'evidence-and-recovery.md' = "Only when explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed: [readiness-and-recovery.md](readiness-and-recovery.md).`nOnly when explicit Continuous policy is active and issue classification is needed: [blocker-classification.md](blocker-classification.md)."
+        'windows-runtime.md' = "Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).`nOnly when explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed: [readiness-and-recovery.md](readiness-and-recovery.md)."
+    }
+    $failures = New-Object System.Collections.Generic.List[string]
+    foreach ($rule in @('ownership','links','authority')) {
+        if (-not (Test-PfcV2ReferenceRules $valid $rule).Passed) { $failures.Add('positive fixture: ' + $rule) }
+    }
+    $cases = @(
+        @{ Id='missing-reference'; Rule='ownership'; Mutate={param($t) $t.Remove('continuous-execution.md')} },
+        @{ Id='missing-section'; Rule='ownership'; Mutate={param($t) $t['risk-validation-policy.md'] = $t['risk-validation-policy.md'].Replace('## Risk Matrix','')} },
+        @{ Id='duplicate-owner'; Rule='ownership'; Mutate={param($t) $t['orchestration-protocol.md'] += "`n## T3 PASS Transition Order"} },
+        @{ Id='unconditional-link'; Rule='links'; Mutate={param($t) $t['roles-and-authority.md'] = 'Always load [continuous-execution.md](continuous-execution.md).'} },
+        @{ Id='wrong-condition'; Rule='links'; Mutate={param($t) $t['orchestration-protocol.md'] = $t['orchestration-protocol.md'].Replace('risk or validation selection','the moon is blue')} },
+        @{ Id='extra-unconditional-link'; Rule='links'; Mutate={param($t) $t['windows-runtime.md'] += "`nAlways load [readiness-and-recovery.md](readiness-and-recovery.md)."} },
+        @{ Id='duplicate-fields'; Rule='authority'; Mutate={param($t) $t['readiness-and-recovery.md'] += "`nRequired root fields: schema_version, authorization_id"} },
+        @{ Id='competing-authority'; Rule='authority'; Mutate={param($t) $t['continuous-execution.md'] += "`nThis reference is the only field-definition authority."} },
+        @{ Id='missing-field-link'; Rule='authority'; Mutate={param($t) $t['blocker-classification.md'] = $t['blocker-classification.md'].Replace('[message-contracts.md](message-contracts.md)','')} },
+        @{ Id='duplicate-protocol'; Rule='authority'; Mutate={param($t)
+            $prose = 'Goalkeeper must verify the active authorization and the registered canonical sources before issuing the single Builder lease; unknown identity or drift stops all business writes until reconciled.'
+            $t['continuous-execution.md'] += "`n`n$prose"
+            $t['orchestration-protocol.md'] += "`n`n$prose"
+        } },
+        @{ Id='heading-adjacent-protocol'; Rule='authority'; Mutate={param($t)
+            $prose = 'Each milestone retains its own Work Order, Candidate, Review and Acceptance. Start the next item automatically only when the current item is ACCEPTED; Candidate, Evidence and Acceptance SHA agree; both applicable identity gates pass; all required validation is PASS; no BLOCKER or MAJOR remains; Contract, scope, paths and Goal are unchanged; no HIGH or irreversible action awaits decision; no acceptance-necessary Specialist is active or unresolved/unavailable; Convergence is neither STALLED nor REGRESSING; Authorization is ACTIVE; and the next item is inside the frozen Wave. Other Specialist authority remains in [specialist-protocol.md](specialist-protocol.md).'
+            $t['continuous-execution.md'] += "`n`n$prose"
+            $t['roles-and-authority.md'] += "`n`n## Local continuation rules`n$prose"
+        } }
+    )
+    foreach ($case in $cases) {
+        $mutated = $valid.Clone()
+        & $case.Mutate $mutated
+        if ((Test-PfcV2ReferenceRules $mutated $case.Rule).Passed) { $failures.Add($case.Id + ': mutation accepted') }
+    }
+    # Exercise the same directory collector used by package checks, including other references.
+    $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
+    $fixture = Join-Path $tempRoot ('pfc-v2-references-' + [guid]::NewGuid().ToString('N'))
+    try {
+        New-Item -ItemType Directory -Path $fixture | Out-Null
+        $fixtureTexts = $valid.Clone()
+        $prose = 'Each milestone retains its own Work Order, Candidate, Review and Acceptance. Start the next item automatically only when the current item is ACCEPTED; Candidate, Evidence and Acceptance SHA agree; both applicable identity gates pass; all required validation is PASS; no BLOCKER or MAJOR remains; Contract, scope, paths and Goal are unchanged; no HIGH or irreversible action awaits decision; no acceptance-necessary Specialist is active or unresolved/unavailable; Convergence is neither STALLED nor REGRESSING; Authorization is ACTIVE; and the next item is inside the frozen Wave. Other Specialist authority remains in [specialist-protocol.md](specialist-protocol.md).'
+        $fixtureTexts['continuous-execution.md'] += "`n`n$prose"
+        $fixtureTexts['builder-debugging.md'] = '# Builder debugging'
+        $fixtureTexts['specialist-protocol.md'] = '# Specialist protocol'
+        $fixtureTexts['message-contracts.md'] = "# Message Contracts`nRequired root fields: schema_version, authorization_id"
+        foreach ($name in $fixtureTexts.Keys) { [IO.File]::WriteAllText((Join-Path $fixture $name), $fixtureTexts[$name], (New-Object Text.UTF8Encoding($false))) }
+        $collected = Get-PfcV2ReferenceTexts $fixture
+        foreach ($name in @('builder-debugging.md','specialist-protocol.md')) {
+            if (-not $collected.ContainsKey($name)) { $failures.Add('directory coverage: ' + $name) }
+        }
+        if ($collected.ContainsKey('message-contracts.md')) { $failures.Add('canonical field authority must be distinguished') }
+        foreach ($rule in @('ownership','links','authority')) {
+            if (-not (Test-PfcV2ReferenceRules $collected $rule).Passed) { $failures.Add('directory positive fixture: ' + $rule) }
+        }
+        [IO.File]::AppendAllText((Join-Path $fixture 'builder-debugging.md'), "`n`n## Wave Lifecycle`n`n$prose", (New-Object Text.UTF8Encoding($false)))
+        $collected = Get-PfcV2ReferenceTexts $fixture
+        foreach ($rule in @('ownership','authority')) {
+            if ((Test-PfcV2ReferenceRules $collected $rule).Passed) { $failures.Add('other-reference-duplicate-' + $rule + ': mutation accepted') }
+        }
+    } finally {
+        $resolved = [IO.Path]::GetFullPath($fixture)
+        if ((Split-Path -Parent $resolved) -cne $tempRoot -or (Split-Path -Leaf $resolved) -notmatch '^pfc-v2-references-[a-f0-9]{32}$') { throw 'Unsafe reference fixture cleanup path' }
+        if (Test-Path -LiteralPath $resolved) { Remove-Item -LiteralPath $resolved -Recurse -Force }
+    }
+    [pscustomobject]@{ Passed = ($failures.Count -eq 0); Missing = @($failures.ToArray()) }
+}
+
+function Test-PfcContinuousSmokeResults {
+    param([object[]]$Results)
+    $expected=@('activation-default','worktree-identity','resume-lease','prewrite-prereview','low-wave','pause-recovery','installer-update-rollback','no-remote-mutation'|ForEach-Object {'windows.'+$_})
+    if ($Results.Count -ne $expected.Count) {return $false}
+    if ((@($Results|ForEach-Object {$_.ScenarioId}|Sort-Object) -join ',') -cne (@($expected|Sort-Object) -join ',')) {return $false}
+    foreach ($result in $Results) {if ($null -eq $result -or @('PASS','FAIL','PARTIAL','NOT_RUN') -cnotcontains $result.Status) {return $false}}
+    return $true
+}
+
+function Test-PfcContinuousSourceContract {
+    param([hashtable]$Texts)
+    $missing = New-Object 'System.Collections.Generic.List[string]'
+    $asts = @{}
+    foreach ($key in @('Scenarios','Smoke','Runner','Tests')) {
+        if (-not $Texts.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($Texts[$key])) { $missing.Add('missing '+$key); continue }
+        $tokens=$null; $errors=$null
+        $asts[$key]=[Management.Automation.Language.Parser]::ParseInput($Texts[$key],[ref]$tokens,[ref]$errors)
+        if (@($errors).Count -gt 0) { $missing.Add('syntax '+$key) }
+    }
+    if ($missing.Count -gt 0) { return [pscustomobject]@{Passed=$false;Missing=@($missing)} }
+    function Find-Function($Ast, [string]$Name) {
+        @($Ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -ceq $Name},$true))
+    }
+    function Owner-Function($Node) {
+        for ($p=$Node.Parent; $null -ne $p; $p=$p.Parent) { if ($p -is [Management.Automation.Language.FunctionDefinitionAst]) { return $p.Name } }
+        return ''
+    }
+    function Has-Command($Ast, [string]$Name) {
+        return @($Ast.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -ceq $Name},$true)).Count -gt 0
+    }
+    # Narrow freeze of reviewed safety structures, not a general PowerShell
+    # safety analyzer. A structural change requires review and a new signature.
+    # Token kinds/text retain execution order and bindings but ignore formatting.
+    $frozen=@(
+        @('Scenarios','Test-CmFixtureBoundary','3213B6357F1C342D391B1DEE9A83BF98367B77C411B7D84B71BC3363FA15A690'),
+        @('Scenarios','New-CmScenarioSandbox','89519D4BEF8B0331D0284ECF1DE64B8876CAFE314AADD999796B104A95BA8CA4'),
+        @('Scenarios','Remove-CmScenarioSandbox','283CB30B7AC716EFCB1436168DE7DC9642E42E05D56EC90E2B4DE6380A8552B0'),
+        @('Scenarios','Invoke-CmFixtureGit','1C3CCDDB33260C8FB861B10FB5EAEB9AB89947FD4A271C2D5CE42D8CA8BDB119'),
+        @('Smoke','Invoke-CmSmokeInstallerProof','DE81A9301BFB380B54B1C5DCF8DB5AA0129C7AB4C45017F87C5C5AF6D9685F46'),
+        @('Runner','Invoke-ContinuousModeWindowsSmoke','E489169CBC5C416BB35DE3257B96F562E331E696050C652CA9A0458C25B1DC7B')
+    )
+    foreach ($entry in $frozen) {
+        $function=@(Find-Function $asts[$entry[0]] $entry[1])
+        if ($function.Count -ne 1) {$missing.Add('frozen structure '+$entry[1]);continue}
+        $tokens=$null;$errors=$null
+        [void][Management.Automation.Language.Parser]::ParseInput($function[0].Extent.Text,[ref]$tokens,[ref]$errors)
+        $shape=@($tokens|Where-Object {$_.Kind.ToString() -notin @('NewLine','LineContinuation','Comment','EndOfInput')}|ForEach-Object {$_.Kind.ToString()+':'+$_.Text}) -join '|'
+        $sha=[Security.Cryptography.SHA256]::Create()
+        try {$signature=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($shape))).Replace('-','')} finally {$sha.Dispose()}
+        if ($signature -cne $entry[2]) {$missing.Add('changed safety structure '+$entry[1])}
+    }
+    $boxAssignments=@($asts.Smoke.FindAll({param($n) $n -is [Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -match '^\$box(?:\.|\[|$)'},$true))
+    if ($boxAssignments.Count -ne 2 -or @($boxAssignments|Where-Object {$_.Extent.Text -cnotin @('$box=$null',"`$box=New-CmScenarioSandbox -Prefix 'pfc-continuous-smoke-'")}).Count -gt 0) {$missing.Add('smoke fixture root binding')}
+    $installerCalls=@($asts.Smoke.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -ceq 'Invoke-CmSmokeInstallerProof'},$true))
+    if ($installerCalls.Count -ne 1 -or $installerCalls[0].Extent.Text -cne 'Invoke-CmSmokeInstallerProof $box $RepositoryRoot') {$missing.Add('smoke installer fixture binding')}
+    $table=@(Find-Function $asts.Scenarios 'Get-PfcContinuousModeScenarios')
+    $ids=@()
+    if ($table.Count -ne 1) { $missing.Add('one scenario table') }
+    else {
+        $entries=@($table[0].Body.FindAll({param($n)
+            $n -is [Management.Automation.Language.HashtableAst] -and @($n.KeyValuePairs | Where-Object {$_.Item1.Value -ceq 'ScenarioId'}).Count -gt 0
+        },$true))
+        foreach ($entry in $entries) {
+            $idPair=@($entry.KeyValuePairs | Where-Object {$_.Item1.Value -ceq 'ScenarioId'})
+            if ($idPair.Count -ne 1) {$missing.Add('duplicate ScenarioId key');continue}
+            $idExpression=$idPair[0].Item2.PipelineElements[0].Expression
+            if ($idExpression -isnot [Management.Automation.Language.StringConstantExpressionAst]) {$missing.Add('literal scenario ID required');continue}
+            $ids+=,$idExpression.Value
+            foreach ($kind in @('Positive','Negative')) {
+                $pair=@($entry.KeyValuePairs | Where-Object {$_.Item1.Value -ceq $kind})
+                if ($pair.Count -ne 1) {$missing.Add($idExpression.Value+' '+$kind);continue}
+                $cases=@($pair[0].Item2.FindAll({param($n) $n -is [Management.Automation.Language.HashtableAst] -and @($n.KeyValuePairs|Where-Object {$_.Item1.Value -ceq 'Test'}).Count -gt 0},$true))
+                if ($cases.Count -eq 0) {$missing.Add($idExpression.Value+' executable '+$kind)}
+                foreach ($case in $cases) {
+                    $tests=@($case.KeyValuePairs|Where-Object {$_.Item1.Value -ceq 'Test'})
+                    $names=@($case.KeyValuePairs|Where-Object {$_.Item1.Value -ceq 'Name'})
+                    if ($tests.Count -ne 1 -or $names.Count -ne 1 -or @($tests[0].Item2.FindAll({param($n) $n -is [Management.Automation.Language.ScriptBlockExpressionAst]},$true)).Count -eq 0 -or -not (Has-Command $tests[0].Item2 'Invoke-CmScenarioOracle')) { $missing.Add($idExpression.Value+' non-oracle '+$kind) }
+                }
+            }
+        }
+    }
+    $expected=@(32..60|ForEach-Object {'SC-'+$_})
+    if (($ids -join ',') -cne ($expected -join ',')) {$missing.Add('exact ordered unique SC-32..SC-60 inventory')}
+    foreach ($statement in $asts.Scenarios.EndBlock.Statements) {if ($statement -isnot [Management.Automation.Language.FunctionDefinitionAst]) {$missing.Add('scenario top-level side effect')}}
+    if (@($asts.Scenarios.FindAll({param($n) $n -is [Management.Automation.Language.VariableExpressionAst] -and $n.VariablePath.UserPath -ieq 'Phase'},$true)).Count -gt 0) {$missing.Add('scenario Phase-dependent behavior')}
+    $suite=@($asts.Runner.ParamBlock.Parameters|Where-Object {$_.Name.VariablePath.UserPath -ceq 'Suite'})
+    $registered=@($suite.Attributes | Where-Object {$_.TypeName.FullName -ceq 'ValidateSet'} | ForEach-Object {$_.PositionalArguments.Value})
+    if ($registered -cnotcontains 'ContinuousModeWindowsSmoke') {$missing.Add('smoke suite registration')}
+    $dispatch=@(Find-Function $asts.Runner 'Invoke-ContinuousModeWindowsSmoke')
+    if ($dispatch.Count -ne 1) {$missing.Add('dedicated smoke dispatch')}
+    $smokePaths=@($asts.Runner.FindAll({param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst] -and $n.Value -match 'WindowsSmoke[\\/]scenario\.ps1'},$true))
+    if ($smokePaths.Count -ne 1) {$missing.Add('single passive smoke path')}
+    foreach ($path in $smokePaths) {
+        if ((Owner-Function $path) -cne 'Invoke-ContinuousModeWindowsSmoke') {$missing.Add('smoke path outside dedicated dispatch')}
+    }
+    foreach ($command in $asts.Runner.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst]},$true)) {
+        if ($command.GetCommandName() -ceq 'Invoke-ContinuousModeWindowsSmoke') {$missing.Add('automatic smoke call')}
+        if ($command.InvocationOperator -eq 'Dot' -and $command.Extent.Text -match 'WindowsSmoke') {$missing.Add('smoke dot-source')}
+    }
+    $aggregate=@(Find-Function $asts.Tests 'Invoke-PfcContinuousScenarioEntry')
+    $inventory=@(Find-Function $asts.Tests 'Test-PfcContinuousScenarioInventory')
+    $runner=@(Find-Function $asts.Tests 'Invoke-PfcContinuousScenarioTests')
+    if ($aggregate.Count -ne 1 -or $inventory.Count -ne 1 -or $runner.Count -ne 1) {$missing.Add('runtime inventory and aggregate validation')}
+    else {
+        if (-not (Has-Command $aggregate[0].Body 'New-PfcResult') -or @($aggregate[0].Body.FindAll({param($n) $n -is [Management.Automation.Language.TryStatementAst] -and $n.CatchClauses.Count -gt 0},$true)).Count -eq 0) {$missing.Add('subcase failures retained in aggregate')}
+        if (-not (Has-Command $runner[0].Body 'Invoke-PfcContinuousScenarioEntry') -or -not (Has-Command $runner[0].Body 'Test-PfcContinuousScenarioInventory')) {$missing.Add('aggregate and declared inventory checked')}
+        $statuses=@($inventory[0].Body.FindAll({param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst]},$true)|ForEach-Object {$_.Value})
+        foreach ($status in @('PASS','FAIL','PARTIAL','NOT_RUN')) {if ($statuses -cnotcontains $status) {$missing.Add('normalized result '+$status)}}
+    }
+    # Command AST inspection ignores quoted adverse test inputs and comments.
+    foreach ($key in @('Scenarios','Smoke')) {
+        foreach ($command in $asts[$key].FindAll({param($n) $n -is [Management.Automation.Language.CommandAst]},$true)) {
+            $name=$command.GetCommandName();$owner=Owner-Function $command
+            if ($name -match '^(?i:codex(?:\.exe)?|Invoke-PfcSpecialistSmoke|Invoke-WebRequest|Invoke-RestMethod|Start-Process|Invoke-Expression|iex|cmd(?:\.exe)?|powershell(?:\.exe)?|pwsh(?:\.exe)?|rm|del|erase)$') {$missing.Add('forbidden command '+$name)}
+            if ($name -match '^(?i:git(?:\.exe)?)$' -and ($owner -cne 'Invoke-CmFixtureGit' -or $command.Extent.Text -notmatch 'git\s+--no-pager\s+-C\s+\$Box\.Repo\s+@Arguments')) {$missing.Add('unbounded Git command')}
+            if ($name -ceq 'Remove-Item' -and ($owner -cne 'Remove-CmScenarioSandbox' -or $command.Extent.Text -cne 'Remove-Item -LiteralPath $root -Recurse -Force')) {$missing.Add('unsafe fixture removal')}
+        }
+        foreach ($type in $asts[$key].FindAll({param($n) $n -is [Management.Automation.Language.TypeExpressionAst]},$true)) {
+            if ($type.TypeName.FullName -match '(?i)(Process|Net\.|ManagementClass|ComObject)') {$missing.Add('external type '+$type.TypeName.FullName)}
+        }
+        foreach ($variable in $asts[$key].FindAll({param($n) $n -is [Management.Automation.Language.VariableExpressionAst]},$true)) {
+            if ($variable.VariablePath.UserPath -match '^(?i:env:|global:|HOME$|CODEX_HOME$)') {$missing.Add('user/global environment access')}
+        }
+    }
+    $boundary=@(Find-Function $asts.Scenarios 'Test-CmFixtureBoundary');$cleanup=@(Find-Function $asts.Scenarios 'Remove-CmScenarioSandbox');$create=@(Find-Function $asts.Scenarios 'New-CmScenarioSandbox');$git=@(Find-Function $asts.Scenarios 'Invoke-CmFixtureGit')
+    if ($boundary.Count -ne 1 -or $cleanup.Count -ne 1 -or $create.Count -ne 1 -or $git.Count -ne 1) {$missing.Add('bounded fixture helpers')}
+    else {
+        foreach ($name in @('Resolve-Path','Test-CmFixtureBoundary','Get-ChildItem','Remove-Item')) {if (-not (Has-Command $cleanup[0].Body $name)) {$missing.Add('cleanup '+$name)}}
+        foreach ($name in @('Resolve-Path','Test-CmFixtureBoundary','New-Item')) {if (-not (Has-Command $create[0].Body $name)) {$missing.Add('creation '+$name)}}
+        $members=@($boundary[0].Body.FindAll({param($n) $n -is [Management.Automation.Language.MemberExpressionAst]},$true)|ForEach-Object {$_.Member.Value})
+        foreach ($member in @('GetFullPath','OrdinalIgnoreCase','ReparsePoint','StartsWith')) {if ($members -cnotcontains $member) {$missing.Add('boundary '+$member)}}
+        if (-not (Has-Command $boundary[0].Body 'Split-Path')) {$missing.Add('direct-child boundary')}
+        $patterns=@($boundary[0].Body.FindAll({param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst]},$true)|ForEach-Object {$_.Value})
+        if ($patterns -cnotcontains '[0-9a-f]{32}\z') {$missing.Add('random fixture basename boundary')}
+        $gitLiterals=@($git[0].Body.FindAll({param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst]},$true)|ForEach-Object {$_.Value})
+        foreach ($value in @('--local','--global','--system','config')) {if ($gitLiterals -cnotcontains $value) {$missing.Add('local-only Git '+$value)}}
+    }
+    $smokeLiterals=@($asts.Smoke.FindAll({param($n) $n -is [Management.Automation.Language.StringConstantExpressionAst]},$true)|ForEach-Object {$_.Value})
+    foreach ($value in @('pfc-continuous-smoke-','NOT_RUN')) {if ($smokeLiterals -cnotcontains $value) {$missing.Add('smoke '+$value)}}
+    foreach ($name in @('New-CmScenarioSandbox','Initialize-CmFixtureGit','Remove-CmScenarioSandbox')) {if (-not (Has-Command $asts.Smoke $name)) {$missing.Add('smoke '+$name)}}
+    foreach ($name in @('Get-PfcInstallPlan','Invoke-PfcInstallPlan','Copy-Item','New-CmPhysicalWriteFixture','New-CmReviewFromWrite','Get-PfcContinuousFixtureSetup')) {if (-not (Has-Command $asts.Smoke $name)) {$missing.Add('smoke executable proof '+$name)}}
+    foreach ($command in $asts.Smoke.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -ceq 'Invoke-PfcInstallPlan'},$true)) {
+        if (@($command.CommandElements | Where-Object {$_ -is [Management.Automation.Language.CommandParameterAst] -and $_.ParameterName -ceq 'PassiveDoctor'}).Count -ne 1) {$missing.Add('smoke installer must use local-only passive verification')}
+    }
+    [pscustomobject]@{Passed=($missing.Count -eq 0);Missing=@($missing)}
+}
+
 function Invoke-PfcStaticChecks {
     param(
         [Parameter(Mandatory = $true)][System.IO.DirectoryInfo]$RepositoryRoot,
@@ -96,6 +637,15 @@ function Invoke-PfcStaticChecks {
     foreach ($check in @($manifest.checks | Sort-Object id)) {
         $passed = $false; $message = ''
         switch ($check.kind) {
+            'continuous_mode_source' {
+                $texts=@{}
+                foreach ($pair in @(@('Scenarios','evals/scenarios/continuous-mode/ContinuousMode.Scenarios.ps1'),@('Smoke','evals/scenarios/continuous-mode/WindowsSmoke/scenario.ps1'),@('Runner','evals/run-evals.ps1'),@('Tests','evals/tests/ContinuousMode.Tests.ps1'))) {
+                    $path=Join-Path $RepositoryRoot.FullName $pair[1]
+                    $texts[$pair[0]]=if (Test-Path -LiteralPath $path -PathType Leaf) {Get-Content -Raw -LiteralPath $path} else {''}
+                }
+                try {$contract=Test-PfcContinuousSourceContract -Texts $texts;$passed=$contract.Passed;$message=if ($passed) {'passive dispatch, exact scenario inventory, aggregates and fixture boundaries verified'} else {$contract.Missing -join '; '}}
+                catch {$passed=$false;$message='continuous source contract failed: '+$_.Exception.Message}
+            }
             'required_path' {
                 $passed = Test-Path -LiteralPath (Join-Path $RepositoryRoot.FullName $check.path) -PathType Leaf
                 $message = if ($passed) { 'present' } else { 'missing: ' + $check.path }
@@ -203,6 +753,22 @@ function Invoke-PfcStaticChecks {
                     if ($profile -notmatch '(?i)must not.*direct.*Verifier') { $missing.Add('direct Verifier command prohibition') }
                     if ($profile -notmatch '(?i)must not.*unrelated dirty') { $missing.Add('unrelated dirty-file prohibition') }
                     if ($profile -notmatch '(?i)builder-debugging\.md.*only.*failure|only.*failure.*builder-debugging\.md') { $missing.Add('failure-only debugging reference') }
+                    $continuousTerms = @('Authorization ID / Status / Scope','Goal ID / Version','Active Plan Milestone ID','Milestone Contract ID / Version','Work Order ID / Milestone ID','Wave ID','Repository Identity','Milestone Worktree Identity','Exact Branch','Authorized Base Checkpoint SHA','Previous Accepted Checkpoint SHA','Current Milestone Base SHA','Expected Builder Start SHA','Actual Worktree HEAD','Writable Path Hash','Forbidden Path Hash','Control Run ID','Lease Epoch','Risk Level','Validation Plan','STOP_BEFORE_WRITE','Candidate SHA only if already present','must not start the next milestone','Goalkeeper alone writes canonical control files and decides acceptance')
+                    foreach ($term in $continuousTerms) { if ($profile -notlike ('*' + $term + '*')) { $missing.Add('continuous: ' + $term) } }
+                    if ($profile -notmatch '(?is)In Continuous Mode return Builder Echo before any business-file write:.+?Only after Goalkeeper confirms PRE_WRITE_IDENTITY_GATE_PASS and issues the matching Lease may you write\.') { $missing.Add('Echo -> Goalkeeper identity gate -> matching Lease -> business write') }
+                    if ($profile -notmatch '(?i)at most two code-changing attempts per failure path, then return Lease; never reset counters on RESUME') { $missing.Add('independent two-attempt repair limit without reset') }
+                    # A soft line wrap does not end a subject. Subjectless grants start at the
+                    # instruction body's beginning or a sentence boundary, never any physical line.
+                    $instructions = [regex]::Match($profile, '(?s)developer_instructions\s*=\s*"""(.*?)"""').Groups[1].Value
+                    $grant = '(?i)(?:\b(?:Builder|You)\s+|(?:^|[.!?;]\s+)\s*)(?:may|can|(?:is|are) allowed to)\s+'
+                    $forbidden = @(
+                        '(?:write|modify|change)\s+(?:canonical\s+)?control files',
+                        'start\s+(?:the\s+)?next milestone',
+                        '(?:issue|grant|self-issue)\s+(?:(?:its|your) own\s+)?Lease',
+                        'reset\s+(?:repair\s+)?counters'
+                    )
+                    foreach ($pattern in $forbidden) { if ($instructions -match ($grant + $pattern)) { $missing.Add('forbidden authority: ' + $pattern) } }
+                    if ((Measure-PfcAgentPromptBudget -Path ([IO.FileInfo]$profilePath)).status -ne 'PASS') { $missing.Add('frozen V1 Agent byte/token budget +15%') }
                 }
                 if (-not (Test-Path -LiteralPath $debugPath -PathType Leaf)) {
                     $missing.Add('builder-debugging.md')
@@ -252,13 +818,23 @@ function Invoke-PfcStaticChecks {
                     if ($profile -notmatch '(?i)must not.*direct(?:ly)?.*command.*Builder') { $missing.Add('direct Builder command prohibition') }
                     if ($profile -notmatch '(?i)must not.*create.*Specialist') { $missing.Add('Specialist creation prohibition') }
                     if ($profile -notmatch '(?i)control files') { $missing.Add('control-file boundary') }
+                    $continuousTerms = @('Verify Order','Authorization ID / Status','Goal / Milestone / Work Order / Verify Order','Repository Identity','Base SHA','Changed Files','Path Policy','Risk Level / Validation Tier','Builder Evidence SHA','Wave ID','Acceptance Record Target','Evidence Freshness','Wave impact','Validation Plan','CONTROL_PLANE_DEFECT','STALE_REPORT_REJECTED','VERSION_INTEGRITY_FAIL','Goalkeeper alone writes canonical control files and decides acceptance')
+                    foreach ($term in $continuousTerms) { if ($profile -notlike ('*' + $term + '*')) { $missing.Add('continuous: ' + $term) } }
+                    if ($profile -notmatch '(?is)Alignment Audit:.+Evidence Integrity:.+Technical Verification follows Alignment Audit and Evidence Integrity; in Continuous Mode only after PRE_REVIEW_IDENTITY_GATE_PASS') { $missing.Add('identity gate before technical review') }
+                    if ($profile -notmatch '(?i)bound to VERIFY_ORDER \(Verify Order\) and Candidate SHA' -or $profile -notmatch '(?i)only when complete, redacted, fresh and bound to current Candidate SHA and order') { $missing.Add('order/Candidate/freshness evidence binding') }
+                    if ((Measure-PfcAgentPromptBudget -Path ([IO.FileInfo]$profilePath)).status -ne 'PASS') { $missing.Add('frozen V1 Agent byte/token budget +15%') }
+                    $instructions = [regex]::Match($profile, '(?s)developer_instructions\s*=\s*"""(.*?)"""').Groups[1].Value
+                    $grant = '(?i)(?:\b(?:Verifier|You)\s+|(?:^|[.!?;]\s+)\s*)(?:may|can|(?:is|are) allowed to)\s+'
                     $forbidden = @(
-                        'Verifier\s+(?:may|can|is allowed to)\s+(?:modify|change)\s+Candidate',
-                        'Verifier\s+(?:may|can|is allowed to)\s+commit',
-                        'Verifier\s+(?:may|can|is allowed to)\s+(?:change|modify)\s+(?:control files|contracts?)',
-                        'Verifier\s+(?:may|can|is allowed to)\s+directly\s+command\s+Builder'
+                        '(?:modify|change)\s+(?:the\s+)?Candidate',
+                        'commit',
+                        '(?:change|modify)\s+(?:control files|contracts?)',
+                        'directly\s+command\s+Builder',
+                        '(?:write|modify|change)\s+(?:canonical\s+)?control files',
+                        'accept\s+(?:stale|other-SHA)\s+evidence',
+                        'declare\s+(?:the\s+)?(?:milestone|Goal)\s+accepted'
                     )
-                    foreach ($pattern in $forbidden) { if ($profile -match ('(?is)' + $pattern)) { $missing.Add('forbidden authority: ' + $pattern) } }
+                    foreach ($pattern in $forbidden) { if ($instructions -match ($grant + $pattern)) { $missing.Add('forbidden authority: ' + $pattern) } }
                 }
                 $passed = $missing.Count -eq 0
                 $message = if ($passed) { 'Verifier profile satisfies independent review and immutability contract' } else { 'missing or invalid: ' + (($missing | Select-Object -First 16) -join ', ') }
@@ -416,6 +992,21 @@ function Invoke-PfcStaticChecks {
                     $passed = ($body -match '(?i)only field-definition authority') -and ($body -match '(?i)WORK_ORDER') -and ($body -match '(?i)PROJECT_CONTROL_REPORT') -and ($body -notmatch '(?i)EFFICIENCY_EXCEPTION\s*\n\s*##')
                     $message = if ($passed) { 'single field authority and formal message families declared' } else { 'authority or message family declaration missing' }
                 } else { $message = 'message-contracts.md missing' }
+            }
+            'v2_control_contracts' {
+                $v2Results = @(Invoke-PfcV2ContractChecks -RepositoryRoot $RepositoryRoot)
+                $passed = @($v2Results | Where-Object Status -ne 'PASS').Count -eq 0
+                $message = ($v2Results | ForEach-Object { $_.Message }) -join '; '
+            }
+            { $_ -in @('v2_reference_ownership','v2_reference_links','v2_reference_authority','v2_reference_negatives') } {
+                if ($check.kind -eq 'v2_reference_negatives') { $ruleCheck = Test-PfcV2ReferenceNegatives }
+                else {
+                    $referenceRoot = Join-Path $RepositoryRoot.FullName 'skill\project-flight-control\references'
+                    $texts = Get-PfcV2ReferenceTexts $referenceRoot
+                    $ruleCheck = Test-PfcV2ReferenceRules -Texts $texts -Rule $check.kind.Replace('v2_reference_','')
+                }
+                $passed = $ruleCheck.Passed
+                $message = if ($passed) { 'V2 reference boundary verified' } else { $ruleCheck.Missing -join '; ' }
             }
             'governance_references' {
                 $referenceRoot = Join-Path $RepositoryRoot.FullName 'skill\project-flight-control\references'
@@ -575,12 +1166,15 @@ function Invoke-PfcMessageContractChecks {
     }
     $missing = New-Object System.Collections.Generic.List[string]
     if (-not (Test-Path -LiteralPath $contract -PathType Leaf)) { $missing.Add('message-contracts.md') }
+    $v2Bindings = Get-PfcV2TemplateBindings -RepositoryRoot $RepositoryRoot
     foreach ($name in $required) {
         $path = Join-Path $templateRoot ($name + '.md')
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $missing.Add($name + '.md'); continue }
         $body = Get-Content -Raw -Encoding UTF8 -LiteralPath $path
         $labels = @([regex]::Matches($body, '(?m)^(?=[^ \t#:])([^#:\r\n]+):\s*(\S.*)$') | ForEach-Object { $_.Groups[1].Value.Trim() })
+        $additional = $v2Bindings.existing.PSObject.Properties[$name]
         $expected = @($common + $specific[$name])
+        if ($null -ne $additional) { $expected += @($additional.Value) }
         foreach ($field in $expected) { if ($labels -notcontains $field) { $missing.Add($name + ': missing ' + $field) } }
         $duplicates = @($labels | Group-Object | Where-Object Count -gt 1 | Select-Object -ExpandProperty Name)
         foreach ($field in $duplicates) { $missing.Add($name + ': duplicate ' + $field) }
@@ -600,7 +1194,8 @@ function Invoke-PfcMessageContractChecks {
     $authorityMessage = if ($authorityPass) { 'single field authority and formal message families declared' } else { 'authority or message family declaration missing' }
     $authorityStatus = if ($authorityPass) { 'PASS' } else { 'FAIL' }
     $results.Add((New-PfcResult -ScenarioId 'package.message_contracts.authority' -Status $authorityStatus -Message $authorityMessage))
+    foreach ($result in @(Invoke-PfcV2ContractChecks -RepositoryRoot $RepositoryRoot)) { $results.Add($result) }
     return @($results.ToArray())
 }
 
-Export-ModuleMember -Function Invoke-PfcStaticChecks, Invoke-PfcMessageContractChecks, Test-PfcEvidenceRecoveryRules, Test-PfcWindowsRuntimeRules
+Export-ModuleMember -Function Invoke-PfcStaticChecks, Invoke-PfcMessageContractChecks, Test-PfcEvidenceRecoveryRules, Test-PfcWindowsRuntimeRules, Invoke-PfcV2ContractChecks, Test-PfcV2ControlSemantics, Test-PfcV2SchemaValue, Test-PfcContinuousSourceContract, Test-PfcContinuousSmokeResults

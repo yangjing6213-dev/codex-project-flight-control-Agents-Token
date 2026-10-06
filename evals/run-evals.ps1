@@ -1,15 +1,23 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('Bootstrap','StaticPackage','Harness','BuilderEfficiency','Revision4Isolation','RunnerRevision3','PermissionProbeFileHandshake','PermissionProbeExecutionPolicy','BuilderProfile','VerifierProfile','MessageContracts','GovernanceReferences','EvidenceRecovery','SkillEntry','SpecialistProtocol','Installer','Doctor','SpecialistSmokeUnit')][string]$Suite,
+    [Parameter(Mandatory = $true)][ValidateSet('Bootstrap','StaticPackage','Harness','BuilderEfficiency','Revision4Isolation','RunnerRevision3','PermissionProbeFileHandshake','PermissionProbeExecutionPolicy','BuilderProfile','VerifierProfile','MessageContracts','GovernanceReferences','EvidenceRecovery','SkillEntry','SpecialistProtocol','Installer','Doctor','SpecialistSmokeUnit','ContinuousContracts','ContinuousMode','ContinuousModeWindowsSmoke','ContinuousModeModelContract','ContinuousModeModel')][string]$Suite,
     [ValidateSet('RED','GREEN')][string]$Phase = 'GREEN',
     [ValidateRange(1,5)][int]$Repeat = 1,
-    [switch]$Json
+    [switch]$Json,
+    [string]$AuthorizationPath,
+    # Optional full path for PowerShell sessions where `codex` is not on PATH.
+    [AllowNull()][string]$CodexExecutablePath,
+    [switch]$DiagnosticCanary
 )
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -Force -ErrorAction Stop
+if($DiagnosticCanary -and ($Suite -cne 'ContinuousModeModel' -or $Repeat -ne 1 -or -not $PSBoundParameters.ContainsKey('Phase') -or [string]::IsNullOrWhiteSpace($AuthorizationPath))) {
+    throw 'Diagnostic Canary requires ContinuousModeModel, an explicit RED or GREEN phase, Repeat 1, and an authorization file.'
+}
 Import-Module (Join-Path $PSScriptRoot 'lib\TestHarness.psm1') -Force
 Import-Module (Join-Path $PSScriptRoot 'lib\CodexRunner.psm1') -Force
-if ($Suite -in @('StaticPackage','Harness','BuilderProfile','VerifierProfile','MessageContracts','GovernanceReferences','EvidenceRecovery','SpecialistProtocol')) {
+if ($Suite -in @('StaticPackage','Harness','BuilderProfile','VerifierProfile','MessageContracts','GovernanceReferences','EvidenceRecovery','SpecialistProtocol','ContinuousMode','ContinuousModeWindowsSmoke')) {
     Import-Module (Join-Path $PSScriptRoot 'lib\StaticChecks.psm1') -Force
     Import-Module (Join-Path $PSScriptRoot 'lib\TestHarness.psm1') -Force
 }
@@ -213,6 +221,14 @@ function Invoke-BuilderEfficiency {
             $override = Invoke-PfcCodexRun -WorkingDirectory $root -PromptPath $prompt -OutputSchemaPath $schema -SandboxMode 'workspace-write' -Phase 'GREEN' -Model 'gpt-5.6-terra' -ReasoningEffort 'medium' -ResultDirectory (Join-Path $root '.pfc-eval-results') -ProcessInvoker $fake
             Assert-PfcTrue -Actual ($override.arguments -contains 'gpt-5.6-terra') -ScenarioId 'runner.args.model-override' -Expected 'terra'
             Assert-PfcTrue -Actual ($override.arguments -contains 'model_reasoning_effort="medium"') -ScenarioId 'runner.args.reasoning-override' -Expected 'medium'
+            Assert-PfcTrue -Actual ($override.arguments -notcontains 'windows.sandbox="elevated"') -ScenarioId 'runner.args.windows-sandbox-default' -Expected 'absent without isolated config'
+            $isolatedConfig = Invoke-PfcCodexRun -WorkingDirectory $root -PromptPath $prompt -OutputSchemaPath $schema -SandboxMode 'workspace-write' -Phase 'GREEN' -IgnoreUserConfig -ResultDirectory (Join-Path $root '.pfc-eval-results') -ProcessInvoker $fake
+            $windowsSandboxIndex = [array]::IndexOf(@($isolatedConfig.arguments), 'windows.sandbox="elevated"')
+            if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT) {
+                Assert-PfcTrue -Actual ($windowsSandboxIndex -gt 0 -and @($isolatedConfig.arguments | Where-Object { $_ -ceq 'windows.sandbox="elevated"' }).Count -eq 1 -and $isolatedConfig.arguments[$windowsSandboxIndex - 1] -ceq '-c') -ScenarioId 'runner.args.windows-sandbox-isolated' -Expected 'one elevated Windows backend override'
+            } else {
+                Assert-PfcTrue -Actual ($windowsSandboxIndex -eq -1) -ScenarioId 'runner.args.windows-sandbox-non-windows' -Expected 'absent on non-Windows'
+            }
             foreach ($badDir in @((Join-Path (Split-Path -Parent $root) '.pfc-eval-results'), (([IO.Path]::GetFullPath($root) + '2') + '\.pfc-eval-results'), (Join-Path $root 'other-results'))) { $rejected = $false; try { Invoke-PfcCodexRun -WorkingDirectory $root -PromptPath $prompt -OutputSchemaPath $schema -SandboxMode 'workspace-write' -ResultDirectory $badDir -Phase 'GREEN' -ProcessInvoker $fake } catch { $rejected = $true }; Assert-PfcTrue -Actual $rejected -ScenarioId 'runner.result-dir-boundary' -Expected 'rejected' }
         } },
         @{ Id = 'task3.runner.process-channel-regressions'; Test = {
@@ -244,10 +260,16 @@ function Invoke-BuilderEfficiency {
                 foreach ($p in $leftover) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
                 if (Test-Path -LiteralPath $timeoutRoot) { Remove-Item -LiteralPath $timeoutRoot -Recurse -Force }
             }
-            $diagRoot = Join-Path (Split-Path -Parent $PSScriptRoot) '.pfc-eval-results\diagnostic'
-            $canaryRaw = Get-ChildItem -LiteralPath $diagRoot -Filter 'raw.jsonl' -File -Recurse | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-            Assert-PfcTrue -Actual ($null -ne $canaryRaw) -ScenarioId 'TEST-1.fixture-present' -Expected 'raw fixture'
-            $canaryLines = @(Get-Content -LiteralPath $canaryRaw.FullName)
+            $canaryLines = @(
+                '{"type":"thread.started","thread_id":"SYNTHETIC-CANARY"}'
+                '{"type":"turn.started"}'
+                '{"type":"error","message":"synthetic error 1"}'
+                '{"type":"error","message":"synthetic error 2"}'
+                '{"type":"error","message":"synthetic error 3"}'
+                '{"type":"error","message":"synthetic error 4"}'
+                '{"type":"item.completed","item":{"type":"agent_message","text":"CANARY_OK"}}'
+                '{"type":"turn.completed"}'
+            )
             $canaryMetrics = Read-PfcCodexJsonlMetrics -Lines $canaryLines
             Assert-PfcTrue -Actual $canaryMetrics.thread_started -ScenarioId 'TEST-1.thread-started' -Expected 'true'
             Assert-PfcTrue -Actual $canaryMetrics.turn_started -ScenarioId 'TEST-1.turn-started' -Expected 'true'
@@ -290,7 +312,9 @@ function Invoke-Bootstrap {
         'VERSION',
         'CHANGELOG.md',
         'docs/project-flight-control-design.md',
-        'docs/superpowers/plans/2026-09-03-project-flight-control-v1-implementation-plan.md'
+        'docs/superpowers/plans/2026-09-03-project-flight-control-v1-implementation-plan.md',
+        'docs/superpowers/plans/2026-09-20-project-flight-control-v2-continuous-mode-implementation-plan.md',
+        'docs/exec-plans/active/project-flight-control-v2-continuous-mode.md'
     )
     $results = New-Object System.Collections.Generic.List[object]
     foreach ($relative in $required) {
@@ -304,14 +328,52 @@ function Invoke-Bootstrap {
     }
 
     $designPath = Join-Path $root 'docs/project-flight-control-design.md'
-    $expectedHash = 'e5c90a41c28ce8e7f9192102f14613adef5af93ee7ee5007b4f69df6ed57dedd'
+    $expectedHash = 'fda8edc9b476e94f387ad553118a9d4982cfb11439d018d8595fecbfeeb259f6'
     try {
-        Assert-PfcTrue -Actual (Test-Path -LiteralPath $designPath -PathType Leaf) -ScenarioId 'bootstrap.spec-hash.file' -Expected 'present'
+        Assert-PfcTrue -Actual (Test-Path -LiteralPath $designPath -PathType Leaf) -ScenarioId 'bootstrap.v2.spec-hash.file' -Expected 'present'
         $actualHash = (Get-FileHash -LiteralPath $designPath -Algorithm SHA256).Hash.ToLowerInvariant()
-        Assert-PfcEqual -Expected $expectedHash -Actual $actualHash -ScenarioId 'bootstrap.spec-hash'
-        $results.Add((New-PfcResult -ScenarioId 'bootstrap.spec-hash' -Status 'PASS' -Message $actualHash))
+        Assert-PfcEqual -Expected $expectedHash -Actual $actualHash -ScenarioId 'bootstrap.v2.spec-hash'
+        $results.Add((New-PfcResult -ScenarioId 'bootstrap.v2.spec-hash' -Status 'PASS' -Message $actualHash))
     } catch {
-        $results.Add((New-PfcResult -ScenarioId 'bootstrap.spec-hash' -Status 'FAIL' -Message $_.Exception.Message))
+        $results.Add((New-PfcResult -ScenarioId 'bootstrap.v2.spec-hash' -Status 'FAIL' -Message $_.Exception.Message))
+    }
+
+    function Add-BootstrapV2Assertion([string]$ScenarioId, [scriptblock]$Assertion, [string]$Message) {
+        try {
+            & $Assertion
+            $results.Add((New-PfcResult -ScenarioId $ScenarioId -Status 'PASS' -Message $Message))
+        } catch {
+            $results.Add((New-PfcResult -ScenarioId $ScenarioId -Status 'FAIL' -Message $_.Exception.Message))
+        }
+    }
+
+    $design = if (Test-Path -LiteralPath $designPath -PathType Leaf) { Get-Content -Raw -LiteralPath $designPath } else { '' }
+    $designHeader = if (Test-Path -LiteralPath $designPath -PathType Leaf) { (Get-Content -LiteralPath $designPath -TotalCount 12) -join "`n" } else { '' }
+    Add-BootstrapV2Assertion 'bootstrap.v2.spec-version' {
+        Assert-PfcTrue -Actual ($design -match '(?m)^- \*\*文档版本\*\*：`PFC-DESIGN-v2\.0-approved`$') -ScenarioId 'bootstrap.v2.spec-version' -Expected 'PFC-DESIGN-v2.0-approved'
+    } 'approved design version'
+    Add-BootstrapV2Assertion 'bootstrap.v2.spec-state' {
+        Assert-PfcTrue -Actual ($designHeader -match 'APPROVED_FOR_IMPLEMENTATION') -ScenarioId 'bootstrap.v2.spec-state' -Expected 'APPROVED_FOR_IMPLEMENTATION'
+    } 'approved design state'
+
+    $versionPath = Join-Path $root 'VERSION'
+    Add-BootstrapV2Assertion 'bootstrap.v2.version' {
+        Assert-PfcEqual -Expected '0.2.0-dev.0' -Actual ((Get-Content -Raw -LiteralPath $versionPath).Trim()) -ScenarioId 'bootstrap.v2.version'
+    } 'V2 development version'
+
+    $ledgerPath = Join-Path $root 'docs/exec-plans/active/project-flight-control-v2-continuous-mode.md'
+    $ledger = if (Test-Path -LiteralPath $ledgerPath -PathType Leaf) { Get-Content -Raw -LiteralPath $ledgerPath } else { '' }
+    foreach ($assertion in @(
+        @{ Id = 'bootstrap.v2.historical-exclusion.path'; Pattern = '(?m)^- Path: `task-3-report\.md`$'; Expected = 'historical path' },
+        @{ Id = 'bootstrap.v2.historical-exclusion.classification'; Pattern = '(?m)^- Classification: `HISTORICAL_EXCLUDED`$'; Expected = 'HISTORICAL_EXCLUDED classification' },
+        @{ Id = 'bootstrap.v2.historical-exclusion.commit-action'; Pattern = '(?m)^- Commit action: `FORBIDDEN`$'; Expected = 'FORBIDDEN commit action' },
+        @{ Id = 'bootstrap.v2.historical-exclusion.delete-action'; Pattern = '(?m)^- Delete action: `FORBIDDEN`$'; Expected = 'FORBIDDEN delete action' },
+        @{ Id = 'bootstrap.v2.historical-exclusion.candidate-action'; Pattern = '(?m)^- Candidate action: `FORBIDDEN`$'; Expected = 'FORBIDDEN candidate action' }
+    )) {
+        $current = $assertion
+        Add-BootstrapV2Assertion $current.Id {
+            Assert-PfcTrue -Actual ($ledger -match $current.Pattern) -ScenarioId $current.Id -Expected $current.Expected
+        } $current.Expected
     }
     return $results
 }
@@ -319,6 +381,26 @@ function Invoke-Bootstrap {
 function Invoke-StaticPackage {
     $root = [System.IO.DirectoryInfo](Split-Path -Parent $PSScriptRoot)
     return Invoke-PfcStaticChecks -RepositoryRoot $root -Phase $Phase
+}
+
+function Invoke-ContinuousContracts {
+    $root = [System.IO.DirectoryInfo](Split-Path -Parent $PSScriptRoot)
+    . (Join-Path $PSScriptRoot 'tests\ContinuousContracts.Tests.ps1')
+    return Invoke-PfcContinuousContractTests -RepositoryRoot $root
+}
+
+function Invoke-ContinuousMode {
+    Import-Module (Join-Path $PSScriptRoot 'lib\ContinuousMode.psm1') -Force
+    . (Join-Path $PSScriptRoot 'tests\ContinuousMode.Tests.ps1')
+    return Invoke-PfcContinuousModeTests -RepositoryRoot (Split-Path -Parent $PSScriptRoot)
+}
+
+function Invoke-ContinuousModeWindowsSmoke {
+    $smokeResults=@(& (Join-Path $PSScriptRoot 'scenarios\continuous-mode\WindowsSmoke\scenario.ps1') -Phase $Phase -RepositoryRoot (Split-Path -Parent $PSScriptRoot))
+    if (-not (Test-PfcContinuousSmokeResults -Results $smokeResults)) {
+        $smokeResults+=New-PfcResult -ScenarioId 'windows.result-contract' -Status FAIL -Message 'Expected exactly eight unique smoke proofs with valid statuses.'
+    }
+    return $smokeResults
 }
 
 function Invoke-BuilderProfile {
@@ -670,8 +752,590 @@ function Invoke-Harness {
     return $results
 }
 
+function Get-CmHash {
+    param([string]$Text, [string]$Path)
+    if ($Path) { return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Text)))).Replace('-','').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+
+function Assert-CmProperties {
+    param($Value, [string[]]$Names)
+    if ($null -eq $Value -or $Value -is [array] -or $Value -is [string] -or $Value -is [ValueType]) { throw 'Expected an object.' }
+    $actual = @($Value.PSObject.Properties.Name)
+    if ($actual.Count -ne $Names.Count -or @(Compare-Object ($Names | Sort-Object) ($actual | Sort-Object) -CaseSensitive).Count) { throw 'Unexpected or missing contract fields.' }
+}
+
+function Read-CmAuthorization {
+    param([string]$Path)
+    $bytes=[IO.File]::ReadAllBytes($Path)
+    if($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191){throw 'Authorization must be UTF-8 without BOM.'}
+    $text=(New-Object Text.UTF8Encoding($false,$true)).GetString($bytes)
+    $value=$text|ConvertFrom-Json
+    # ConvertFrom-Json accepts repeated identical keys on Windows PowerShell.
+    # Track JSON object scopes so nested authorization bindings are strict too.
+    $tokens=[regex]::Matches($text,'"(?:\\.|[^"\\])*"|[{}\[\]:,]')
+    $stack=New-Object 'System.Collections.Generic.Stack[object]'
+    for($i=0;$i -lt $tokens.Count;$i++) {
+        $token=$tokens[$i].Value
+        if($token -eq '{') { $stack.Push((New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase))) }
+        elseif($token -eq '}') { $null=$stack.Pop() }
+        elseif($token.StartsWith('"') -and $i+1 -lt $tokens.Count -and $tokens[$i+1].Value -eq ':') {
+            $key=ConvertFrom-Json -InputObject ('['+$token+']')
+            if(-not $stack.Peek().Add([string]$key)){throw 'Duplicate authorization JSON property.'}
+        }
+    }
+    return $value
+}
+
+function Assert-CmPath {
+    param([string]$Path, [string]$Parent, [string]$RepositoryRoot)
+    if ([string]::IsNullOrWhiteSpace($Path) -or $Path -match '(^|[\\/])\.\.([\\/]|$)' -or -not (Test-PfcPathDescendant -Path $Path -Parent $Parent) -or (Test-PfcReparsePath -Path $Path)) { throw 'CM path boundary failed.' }
+    if ($RepositoryRoot) {
+        & git --no-pager -C $RepositoryRoot check-ignore -q -- $Path
+        if ($LASTEXITCODE -ne 0) { throw 'CM evidence and authorization must be locally ignored.' }
+    }
+}
+
+function Assert-CmGitEnvironment {
+    if (@([Environment]::GetEnvironmentVariables('Process').Keys | Where-Object { $_ -match '^GIT_' -and $_ -cne 'GIT_PAGER' }).Count) { throw 'Inherited Git environment is forbidden for CM fixture operations.' }
+}
+
+function New-CmFixture {
+    param($Manifest,[string]$RepositoryRoot=(Split-Path -Parent $PSScriptRoot))
+    Assert-CmGitEnvironment
+    $path = Join-Path ([IO.Path]::GetTempPath()) ('pfc-cm-fixture-' + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $path | Out-Null
+    $environmentNames = @('GIT_CONFIG_NOSYSTEM','GIT_CONFIG_GLOBAL','GIT_AUTHOR_NAME','GIT_AUTHOR_EMAIL','GIT_COMMITTER_NAME','GIT_COMMITTER_EMAIL','GIT_AUTHOR_DATE','GIT_COMMITTER_DATE')
+    $saved = @{}; foreach($name in $environmentNames) { $saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process') }
+    try {
+        [Environment]::SetEnvironmentVariable('GIT_CONFIG_NOSYSTEM','1','Process')
+        [Environment]::SetEnvironmentVariable('GIT_CONFIG_GLOBAL',(Join-Path $path '.git/cm-empty-config'),'Process')
+        foreach($name in @('GIT_AUTHOR_NAME','GIT_COMMITTER_NAME')) { [Environment]::SetEnvironmentVariable($name,'CM Fixture','Process') }
+        foreach($name in @('GIT_AUTHOR_EMAIL','GIT_COMMITTER_EMAIL')) { [Environment]::SetEnvironmentVariable($name,'cm-fixture@example.invalid','Process') }
+        foreach($name in @('GIT_AUTHOR_DATE','GIT_COMMITTER_DATE')) { [Environment]::SetEnvironmentVariable($name,'2026-09-20T00:00:00Z','Process') }
+        $gitArgs=@('-c','core.autocrlf=false','-c','core.safecrlf=false','-c','commit.gpgSign=false','-c','core.hooksPath=NUL','-c','core.attributesFile=NUL','-c','init.defaultBranch=cm-fixture','-C',$path)
+        & git --no-pager @gitArgs init --quiet --template= 2>&1 | Out-Null; if($LASTEXITCODE -ne 0){throw 'Fixture Git init failed.'}
+        [IO.File]::AppendAllText((Join-Path $path '.git/config'),"`n[core]`n autocrlf = false`n safecrlf = false`n hooksPath = NUL`n attributesFile = NUL`n[commit]`n gpgSign = false`n",[Text.Encoding]::UTF8)
+        foreach($file in $Manifest.fixture.files) {
+            $target=Join-Path $path $file.path
+            if ($file.path -match '(^|[\\/])\.git([\\/]|$)|(^|[\\/])\.\.([\\/]|$)' -or [IO.Path]::IsPathRooted($file.path)) { throw 'Unsafe fixture recipe path.' }
+            Assert-CmPath -Path $target -Parent $path
+            New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+            Write-PfcUtf8NoBom -Path $target -Content $file.content
+        }
+        foreach($productInput in $Manifest.product_inputs) {
+            $source=Join-Path $RepositoryRoot $productInput.path
+            Assert-CmPath $source $RepositoryRoot
+            if((Get-CmHash -Path $source) -cne $productInput.sha256){throw 'Product input drift before fixture creation.'}
+            $target=Join-Path $path ('.pfc-product/'+$productInput.path)
+            Assert-CmPath $target $path
+            New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force|Out-Null
+            [IO.File]::WriteAllBytes($target,[IO.File]::ReadAllBytes($source))
+            if($productInput.path -cmatch '^codex-agents/project-flight-(builder|verifier)\.toml$') {
+                $profile=Join-Path $path ('.codex/agents/'+(Split-Path -Leaf $productInput.path))
+                New-Item -ItemType Directory -Path (Split-Path -Parent $profile) -Force|Out-Null
+                [IO.File]::WriteAllBytes($profile,[IO.File]::ReadAllBytes($source))
+            }
+        }
+        & git --no-pager @gitArgs add --all; if($LASTEXITCODE -ne 0){throw 'Fixture Git add failed.'}
+        & git --no-pager @gitArgs commit --quiet -m ('Frozen '+$Manifest.scenario_id+' fixture'); if($LASTEXITCODE -ne 0){throw 'Fixture Git commit failed.'}
+        $global:LASTEXITCODE=$null
+        $headOutput=@(& git --no-pager @gitArgs rev-parse HEAD);$headExit=$LASTEXITCODE
+        if($null -eq $headExit -or $headExit -ne 0 -or $headOutput.Count -ne 1 -or $headOutput[0] -cnotmatch '\A[0-9a-f]{40}\z' -or $headOutput[0] -ceq ('0'*40)){throw 'Missing physical Git base.'}
+        $base=[string]$headOutput[0]
+        foreach($file in $Manifest.fixture.dirty_files) {
+            $target=Join-Path $path $file.path
+            if ([IO.Path]::IsPathRooted($file.path) -or $file.path -match '(^|[\\/])(\.git|\.\.)([\\/]|$)') { throw 'Unsafe dirty fixture path.' }
+            Assert-CmPath -Path $target -Parent $path
+            Write-PfcUtf8NoBom -Path $target -Content $file.content
+        }
+        $global:LASTEXITCODE=$null
+        $statusOutput=@(& git --no-pager @gitArgs status --porcelain);$statusExit=$LASTEXITCODE
+        if($null -eq $statusExit -or $statusExit -ne 0){throw 'Initial fixture status unavailable.'}
+        return [pscustomobject]@{path=$path;base_sha=$base;context_id=(Split-Path -Leaf $path);initial_status=($statusOutput -join "`n")}
+    } catch { Remove-CmFixture -Path $path; throw }
+    finally { foreach($name in $environmentNames) { [Environment]::SetEnvironmentVariable($name,$saved[$name],'Process') } }
+}
+
+function Remove-CmFixture {
+    param([string]$Path)
+    $full=[IO.Path]::GetFullPath($Path)
+    if ((Split-Path -Leaf $full) -cnotmatch '^pfc-cm-fixture-[0-9a-f]{32}$' -or -not ((Split-Path -Parent $full).Equals([IO.Path]::GetTempPath().TrimEnd('\'),[StringComparison]::OrdinalIgnoreCase)) -or (Test-PfcReparsePath -Path $full)) { throw 'Refusing fixture cleanup outside owned temporary root.' }
+    if (Test-Path -LiteralPath $full) {
+        if (@(Get-ChildItem -LiteralPath $full -Force -Recurse | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) { throw 'Refusing cleanup of a fixture containing reparse points.' }
+        Remove-Item -LiteralPath $full -Force -Recurse
+    }
+}
+
+function Get-CmPrompt {
+    param([string]$Directory,[string]$Phase)
+    $common=[IO.File]::ReadAllText((Join-Path $Directory 'common.md'),[Text.Encoding]::UTF8)
+    $task=[IO.File]::ReadAllText((Join-Path $Directory 'prompt.md'),[Text.Encoding]::UTF8)
+    $text=$common.TrimEnd()+"`n`n"+$task.Trim()+"`n"
+    if($Phase -ceq 'GREEN') { $text=$text.TrimEnd()+"`n`n"+[IO.File]::ReadAllText((Join-Path $Directory 'treatment.md'),[Text.Encoding]::UTF8).Trim()+"`n" }
+    return $text
+}
+
+function Assert-CmRunnerManagedRoleControl {
+    param([object]$RoleControl)
+    if($null -eq $RoleControl -or $RoleControl.launch_source -cne 'runner' -or $RoleControl.launch_mode -cne 'separate_codex_processes' -or $RoleControl.execution_order -cne 'builder_then_verifier_serial' -or $RoleControl.goalkeeper_session_mode -cne 'persistent_resumed' -or $RoleControl.subagents_enabled -ne $false -or $RoleControl.explicit_role_context_permission -ne $true -or ($RoleControl.roles -join ',') -cne 'project_flight_builder,project_flight_verifier' -or $RoleControl.maximum_concurrent_role_contexts -ne 2 -or $RoleControl.maximum_authorized_role_contexts_per_attempt -ne 13 -or $RoleControl.maximum_authorized_role_contexts_per_phase -ne 455 -or $RoleControl.context_budget_semantics -cne 'MAXIMUM_NOT_EXPECTED_USAGE' -or $RoleControl.enforcement -cne 'instruction_and_trace_audit' -or $RoleControl.hard_total_cap_available -ne $false -or $RoleControl.acknowledge_additional_model_usage -ne $true -or $RoleControl.recursive_delegation -ne $false -or $RoleControl.replacement_calls -ne $false -or $RoleControl.maximum_candidate_revisions -ne 3 -or $RoleControl.maximum_auto_rework_rounds -ne 2 -or $RoleControl.maximum_builder_repairs -ne 2 -or $RoleControl.maximum_scenario_milestones -ne 2 -or $RoleControl.model -cne 'gpt-5.6-terra' -or $RoleControl.reasoning_effort -cne 'medium' -or $RoleControl.top_level_attempt_cap -ne 35 -or $RoleControl.missing_or_exceeded_trace -cne 'STOP_PRESERVE_NO_RETRY' -or $RoleControl.token_usage_scope -cne 'ALL_CONTEXTS_OR_NOT_AVAILABLE' -or $RoleControl.trace_contract -cne 'runner_owned_lifecycle_jsonl_with_persistent_goalkeeper_resume' -or $RoleControl.safe_no_dispatch_collection -cne 'CM05_frozen_identity_reads_and_unchanged_physical_evidence_only'){throw 'Invalid Runner-managed Builder/Verifier role contract.'}
+}
+
+function Assert-CmRunnerRoleAuthorization {
+    param([object]$Expected,[object]$Authorized)
+    if($null -eq $Expected -or $null -eq $Authorized -or ($Authorized|ConvertTo-Json -Depth 60 -Compress) -cne ($Expected|ConvertTo-Json -Depth 60 -Compress)){throw 'Runner-managed role authorization missing or mismatched.'}
+}
+
+function Get-CmFrozenControl {
+    param([string]$RepositoryRoot)
+    $controlPath=Join-Path $RepositoryRoot 'evals/expected/continuous-mode-model/frozen-control.json'
+    $control=Get-Content -Raw -Encoding UTF8 -LiteralPath $controlPath|ConvertFrom-Json
+    Assert-CmProperties $control @('contract','model','reasoning_effort','sandbox','repetition_count','scenario_ids','metrics','hard_gates','efficiency_gate','artifacts','scenarios','product','runner_managed_roles')
+    if($control.product.candidate_sha -cnotmatch '\A[0-9a-f]{40}\z' -or $control.product.inputs.Count -lt 3 -or (Get-CmHash -Text ($control.product.inputs|ConvertTo-Json -Depth 60 -Compress)) -cne $control.product.inputs_sha256){throw 'Invalid product Candidate binding.'}
+    $global:LASTEXITCODE=$null
+    $productTree=@(& git --no-pager -C $RepositoryRoot ls-tree -r $control.product.candidate_sha -- skill/project-flight-control codex-agents);$treeExit=$LASTEXITCODE
+    if($null -eq $treeExit -or $treeExit -ne 0 -or $productTree.Count -ne $control.product.inputs.Count){throw 'Product source Candidate tree unavailable.'}
+    foreach($productInput in $control.product.inputs) {
+        $path=Join-Path $RepositoryRoot $productInput.path;Assert-CmPath $path $RepositoryRoot
+        if((Get-CmHash -Path $path) -cne $productInput.sha256){throw 'Product input drift.'}
+        if(@($productTree|Where-Object {$_ -ceq ('100644 blob '+$productInput.git_blob_sha+"`t"+$productInput.path)}).Count -ne 1){throw 'Product input not bound to source Candidate.'}
+        $bytes=[IO.File]::ReadAllBytes($path);$prefix=[Text.Encoding]::ASCII.GetBytes('blob '+$bytes.Length+[char]0);$sha=[Security.Cryptography.SHA1]::Create()
+        try{$blob=[BitConverter]::ToString($sha.ComputeHash([byte[]]($prefix+$bytes))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
+        if($blob -cne $productInput.git_blob_sha){throw 'Product Candidate byte mismatch.'}
+    }
+    Assert-CmRunnerManagedRoleControl -RoleControl $control.runner_managed_roles
+    if($control.contract -cne 'CM1' -or $control.model -cne 'gpt-5.6-terra' -or $control.reasoning_effort -cne 'medium' -or $control.sandbox -cne 'workspace-write' -or $control.repetition_count -ne 5 -or ($control.scenario_ids -join ',') -cne 'CM-01,CM-02,CM-03,CM-04,CM-05,CM-06,CM-07' -or $control.scenarios.Count -ne 7) { throw 'Invalid frozen CM controls.' }
+    foreach($artifact in $control.artifacts) {
+        $path=Join-Path $RepositoryRoot $artifact.path; Assert-CmPath $path $RepositoryRoot
+        if((Get-CmHash -Path $path) -cne $artifact.sha256) { throw ('Frozen artifact drift: '+$artifact.path) }
+    }
+    $schema=Join-Path $RepositoryRoot 'evals/scenarios/continuous-mode-model/continuous-mode-eval-run.schema.json'
+    if((Get-PfcStrictSchemaPreflight -Path $schema).strict_schema_preflight -cne 'PASS'){throw 'CM isolated schema is not strict UTF-8 without BOM.'}
+    foreach($entry in $control.scenarios) {
+        $path=Join-Path $RepositoryRoot $entry.manifest_path; Assert-CmPath $path (Join-Path $RepositoryRoot 'evals/scenarios/continuous-mode-model')
+        if((Get-CmHash -Path $path) -cne $entry.manifest_sha256){throw 'Frozen scenario manifest drift.'}
+        $manifest=Get-Content -Raw -Encoding UTF8 -LiteralPath $path|ConvertFrom-Json
+        if($manifest.product_candidate_sha -cne $control.product.candidate_sha -or $manifest.product_inputs_sha256 -cne $control.product.inputs_sha256 -or ($manifest.product_inputs|ConvertTo-Json -Depth 60 -Compress) -cne ($control.product.inputs|ConvertTo-Json -Depth 60 -Compress)){throw 'Scenario product binding drift.'}
+        if($manifest.scenario_id -cne $entry.scenario_id -or $manifest.base_sha -cne $entry.base_sha -or $manifest.base_sha -cnotmatch '^[0-9a-f]{40}$' -or $manifest.fixture_sha -cne (Get-CmHash -Text ($manifest.fixture|ConvertTo-Json -Depth 60 -Compress)) -or $manifest.task_contract_sha -cne (Get-CmHash -Text ($manifest.task_contract|ConvertTo-Json -Depth 60 -Compress))) {throw 'Fixture or task contract drift.'}
+        foreach($field in @('model','reasoning_effort','sandbox','repetition_count')) { if($manifest.$field -cne $control.$field){throw 'Scenario control mismatch.'} }
+        $directory=Split-Path -Parent $path
+        foreach($pair in @(@('common.md','common_prompt_sha256'),@('prompt.md','prompt_sha256'),@('treatment.md','treatment_sha256'))) {
+            $promptPath=Join-Path $directory $pair[0];Assert-CmPath $promptPath $directory
+            if((Get-CmHash -Path $promptPath) -cne $manifest.($pair[1])){throw 'Prompt bytes drifted.'}
+        }
+        if($manifest.schema_sha256 -cne (Get-CmHash -Path $schema) -or $manifest.runner_sha256 -cne (Get-CmHash -Path (Join-Path $RepositoryRoot 'evals/lib/CodexRunner.psm1'))) {throw 'Runner/schema drift.'}
+        foreach($phaseName in @('RED','GREEN')) { if((Get-CmHash -Text (Get-CmPrompt $directory $phaseName)) -cne $entry.effective_prompt_sha256.$phaseName) {throw 'Effective prompt drift.'} }
+    }
+    return $control
+}
+
+function Convert-CmEvidenceText {
+    param([string]$Text)
+    # Persist only allowlisted fields. Strings in nested metric/evidence entries
+    # receive the same redaction before leaving ignored raw storage.
+    $value=$Text -replace '(?i)(?<![A-Za-z0-9_])["'']?(?:api[_-]?key|token|password|secret)["'']?\s*[:=]\s*(?:"(?:\\.|[^"\\])*"|''(?:\\.|[^''\\])*''|[^\s,;}\]]+)','<REDACTED_SECRET>'
+    $value=$value -replace '(?i)(?:[A-Za-z]:[\\/]|\\\\)[^\s"'']+','<ABSOLUTE_PATH>'
+    $value=$value -replace '(?<![A-Za-z0-9])/[^\s"'']+','<ABSOLUTE_PATH>'
+    return ($value -replace '(?i)(sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]+|(?:api[_-]?key|token|password|secret)\s*[:=]\s*[^\s,;]+)','<REDACTED_SECRET>')
+}
+
+function Read-CmNativeTrace {
+    param([string]$Path,[bool]$FakeTransport=$false)
+    # Only native transport items are evidence of distinct contexts. Agent text,
+    # tool stdout and model-reported counters cannot manufacture these records.
+    $out=[ordered]@{status='NOT_AVAILABLE';observed_child_contexts='NOT_AVAILABLE';independent_handoffs=@();source=$(if($FakeTransport){'FAKE_TRANSPORT_ONLY'}else{'NATIVE_TRANSPORT'});correctness='NOT_RUN';lifecycle='NOT_AVAILABLE';no_dispatch_readonly=$false;error_event_count=0}
+    $root=$null;$contexts=@{};$handoffs=@();$pendingBuilder=$null;$candidate=$null;$terminal=$false;$turn=$false;$items=@{};$readonly=$true;$identityReads=@{}
+    foreach($line in [IO.File]::ReadAllLines($Path)) {
+        $event=$line|ConvertFrom-Json
+        if($terminal){return [pscustomobject]$out}
+        if($event.type -ceq 'error'){$out.error_event_count++;continue}
+        if($event.type -ceq 'thread.started'){if($root -or -not $event.thread_id){return [pscustomobject]$out};$root=$event.thread_id;continue}
+        if($event.type -ceq 'turn.started'){if(-not $root -or $turn){return [pscustomobject]$out};$turn=$true;continue}
+        if(-not $turn){return [pscustomobject]$out}
+        if($event.type -ceq 'turn.completed'){$terminal=$true;continue}
+        if($event.type -cnotin @('item.started','item.updated','item.completed')){return [pscustomobject]$out}
+        $item=$event.item
+        if($event.type -ceq 'item.completed' -and $item.type -ceq 'error'){$out.error_event_count++}
+        if(-not $item.id -or $item.type -cnotin @('agent_message','reasoning','command_execution','file_change','todo_list','collab_tool_call','collabAgentToolCall','error')){return [pscustomobject]$out}
+        if($event.type -ceq 'item.started') {
+            if($items.ContainsKey($item.id)){return [pscustomobject]$out}
+            $items[$item.id]=@{type=$item.type;done=$false};continue
+        }
+        if($event.type -ceq 'item.updated'){if(-not $items.ContainsKey($item.id) -or $items[$item.id].done -or $items[$item.id].type -cne $item.type){return [pscustomobject]$out};continue}
+        if(-not $items.ContainsKey($item.id)) {
+            if($item.type -cnotin @('agent_message','reasoning','file_change','error')){return [pscustomobject]$out}
+            $items[$item.id]=@{type=$item.type;done=$false}
+        }
+        if($items[$item.id].done -or $items[$item.id].type -cne $item.type){return [pscustomobject]$out}
+        $items[$item.id].done=$true
+        if($item.type -ceq 'error'){continue}
+        if($item.type -ceq 'command_execution') {
+            # The no-dispatch CM-05 route permits only directly observed simple
+            # reads. Scripts, chaining, unknown tools and hidden dispatch stay unknown.
+            if($item.status -cne 'completed' -or $null -eq $item.exit_code -or $item.exit_code -ne 0 -or [string]$item.command -cnotmatch '^(?:git (?:status --porcelain|rev-parse HEAD|diff --no-ext-diff --no-textconv)|Get-Content (?:-Raw )?(?:-LiteralPath )?[A-Za-z0-9_./-]+)$'){$readonly=$false}
+            foreach($path in @('docs/project-control/WORK_ORDER.md','docs/project-control/STATUS.md')){if([string]$item.command -cmatch ('^Get-Content (?:-Raw )?(?:-LiteralPath )?'+[regex]::Escape($path)+'$')){$identityReads[$path]=[string]$item.aggregated_output}}
+        }
+        if($item.type -ceq 'file_change'){$readonly=$false}
+        if($item.type -ceq 'collab_tool_call') {
+            $item=[pscustomobject]@{type='collabAgentToolCall';tool=(@{spawn_agent='spawnAgent';wait='wait';close_agent='closeAgent';send_input='sendInput'})[$item.tool];senderThreadId=$item.sender_thread_id;receiverThreadIds=$item.receiver_thread_ids;prompt=$item.prompt;agentsStates=$item.agents_states;status=$item.status}
+        }
+        if($item.type -cne 'collabAgentToolCall'){continue}
+        if(-not $root -or $item.senderThreadId -cne $root -or $item.status -cne 'completed'){return [pscustomobject]$out}
+        if($item.tool -ceq 'spawnAgent') {
+            $ids=@($item.receiverThreadIds)
+            $role=[regex]::Match([string]$item.prompt,'ROLE=(project_flight_builder|project_flight_verifier)(?:\s|$)').Groups[1].Value
+            if($ids.Count -ne 1 -or -not $ids[0] -or $ids[0] -ceq $root -or $contexts.ContainsKey($ids[0]) -or -not $role){return [pscustomobject]$out}
+            $context=@{role=$role;terminal=$false;consumed=$false;builder=$null;requested=$null}
+            if($role -ceq 'project_flight_builder') {
+                if($pendingBuilder){return [pscustomobject]$out}
+                $pendingBuilder=$ids[0];$candidate=$null
+            } else {
+                $requestedSha=[regex]::Match([string]$item.prompt,'CANDIDATE_SHA=([a-f0-9]{40})(?:\s|$)').Groups[1].Value
+                if(-not $requestedSha -or $requestedSha -cne $candidate){return [pscustomobject]$out}
+                $context.requested=$requestedSha;$context.builder=$pendingBuilder
+            }
+            $contexts[$ids[0]]=$context
+            if($contexts.Count -gt 13){$out.status='EXCEEDED';$out.observed_child_contexts=$contexts.Count;return [pscustomobject]$out}
+        }
+        elseif($item.tool -cnotin @('wait','closeAgent')){return [pscustomobject]$out}
+        foreach($id in $item.receiverThreadIds){if(-not $contexts.ContainsKey($id)){return [pscustomobject]$out}}
+        foreach($state in $item.agentsStates.PSObject.Properties) {
+            if(-not $contexts.ContainsKey($state.Name)){return [pscustomobject]$out}
+            $context=$contexts[$state.Name]
+            if($context.consumed){continue}
+            if($state.Value.status -cne 'completed'){continue}
+            $context.terminal=$true;$context.consumed=$true
+            if($context.role -ceq 'project_flight_builder' -and $state.Name -ceq $pendingBuilder -and ([string]$state.Value.message).Contains('BUILD_REPORT')) {
+                $candidate=[regex]::Match([string]$state.Value.message,'CANDIDATE_SHA=([a-f0-9]{40})(?:\s|$)').Groups[1].Value
+            }
+            if($context.role -cne 'project_flight_verifier'){continue}
+            $sha=[regex]::Match([string]$state.Value.message,'CANDIDATE_SHA=([a-f0-9]{40})(?:\s|$)').Groups[1].Value
+            if($sha -and $sha -ceq $context.requested -and $sha -ceq $candidate -and $context.builder -ceq $pendingBuilder -and ([string]$state.Value.message).Contains('REVIEW_REPORT')) {
+                $handoffs+= [pscustomobject]@{builder_context=$context.builder;verifier_context=$state.Name;candidate_sha=$sha;review='REPORTED_BY_INDEPENDENT_CONTEXT_UNVERIFIED'}
+                $pendingBuilder=$null
+            } else {return [pscustomobject]$out}
+        }
+    }
+    if($terminal -and @($items.Values|Where-Object {-not $_.done}).Count -eq 0 -and @($contexts.Values|Where-Object {-not $_.terminal}).Count -eq 0){$out.lifecycle='TERMINAL_OBSERVED'}
+    if($out.error_event_count -gt 0){$out.status='ERRORS_OBSERVED';$out.observed_child_contexts='NOT_AVAILABLE';return [pscustomobject]$out}
+    if($out.lifecycle -ceq 'TERMINAL_OBSERVED' -and $contexts.Count -eq 0) {
+        if($readonly -and $identityReads.Count -eq 2){$out.status='NO_DISPATCH_OBSERVED';$out.observed_child_contexts=0;$out.no_dispatch_readonly=$true;$out.identity_reads=$identityReads}
+        else {$out.lifecycle='NOT_AVAILABLE'}
+    }
+    if($out.lifecycle -ceq 'TERMINAL_OBSERVED' -and $handoffs.Count -gt 0 -and -not $pendingBuilder){$out.status='OBSERVED';$out.observed_child_contexts=$contexts.Count;$out.independent_handoffs=$handoffs}
+    return [pscustomobject]$out
+}
+
+function Read-CmRunnerTrace {
+    param([string]$Path,[switch]$FakeTransport)
+    $isFake = [bool]$FakeTransport
+    return Read-PfcRunnerLifecycle -Path $Path -FakeTransport:$isFake
+}
+
+function Invoke-CmModelSample {
+    param([string]$RepositoryRoot,$Manifest,$Fixture,[string]$Phase,[int]$Repetition,[string]$ResultDirectory,[AllowNull()][string]$CodexExecutablePath,[scriptblock]$ProcessInvoker)
+    Assert-CmGitEnvironment
+    Assert-CmPath $ResultDirectory (Join-Path $RepositoryRoot '.pfc-eval-results') $RepositoryRoot
+    $control=Get-CmFrozenControl $RepositoryRoot
+    $entry=@($control.scenarios|Where-Object scenario_id -CEQ $Manifest.scenario_id)[0]
+    $global:LASTEXITCODE=$null
+    $headOutput=@(& git --no-pager -C $Fixture.path rev-parse HEAD);$headExit=$LASTEXITCODE
+    if($null -eq $headExit -or $headExit -ne 0 -or $headOutput.Count -ne 1 -or $headOutput[0] -cnotmatch '\A[0-9a-f]{40}\z' -or $headOutput[0] -ceq ('0'*40)){throw 'Pre-call HEAD unavailable.'}
+    $global:LASTEXITCODE=$null
+    $statusOutput=@(& git --no-pager -C $Fixture.path status --porcelain);$statusExit=$LASTEXITCODE
+    if($null -eq $statusExit -or $statusExit -ne 0){throw 'Pre-call status unavailable.'}
+    if($Fixture.base_sha -cne $Manifest.base_sha -or $headOutput[0] -cne $Manifest.base_sha -or ($statusOutput -join "`n") -cne $Fixture.initial_status) {throw 'Pre-call fixture drift.'}
+    $directory=Split-Path -Parent (Join-Path $RepositoryRoot $entry.manifest_path)
+    $shared=Get-CmPrompt $directory RED
+    $sharedPath=Join-Path $ResultDirectory ('shared-'+[guid]::NewGuid().ToString('N')+'.md')
+    Write-PfcUtf8NoBom -Path $sharedPath -Content $shared
+    $runnerLifecyclePath=Join-Path $ResultDirectory ('runner-events-'+$Manifest.scenario_id+'-'+$Phase+'-'+$Repetition+'-'+[guid]::NewGuid().ToString('N')+'.jsonl')
+    $parameters=@{WorkingDirectory=$Fixture.path;PromptPath=$sharedPath;OutputSchemaPath=(Join-Path $RepositoryRoot 'evals/scenarios/continuous-mode-model/continuous-mode-eval-run.schema.json');SandboxMode=$Manifest.sandbox;CodexExecutablePath=$CodexExecutablePath;MaximumChildren=13;ResultDirectory=$ResultDirectory;LifecyclePath=$runnerLifecyclePath;Phase=$Phase;Model=$Manifest.model;ReasoningEffort=$Manifest.reasoning_effort;RequireExternalResultDirectory=$true;Scenario=$Manifest.scenario_id;Repetition=$Repetition;FixtureBaseSha=$Fixture.base_sha;FixtureId=$Fixture.context_id;SampleId=($Manifest.scenario_id+'-'+$Phase+'-'+$Repetition);ContinuousModeAgentDirectory=(Join-Path $Fixture.path '.codex/agents')}
+    if($Phase -ceq 'GREEN'){$parameters.TreatmentPromptPath=Join-Path $directory 'treatment.md'}
+    $composition=Get-PfcEvaluationPromptText -CommonPromptPath $sharedPath -TreatmentPromptPath $parameters.TreatmentPromptPath -Phase $Phase
+    if((Get-CmHash -Text $composition.text) -cne $entry.effective_prompt_sha256.$Phase){throw 'Invocation prompt does not match freeze.'}
+    if($ProcessInvoker){$parameters.ProcessInvoker=$ProcessInvoker}
+    $flow=Invoke-PfcRunnerManagedCodexFlow @parameters
+    $raw=$flow.raw
+    $payload=$raw.continuous_model_output
+    if($raw.process_count -ne 1 -or $raw.automatic_retries -ne 0 -or $raw.turn_result -cne 'COMPLETED' -or $raw.error_events -gt 0 -or $raw.structured_output_validated -ne $true -or $payload.phase -cne $Phase -or $payload.scenario_id -cne $Manifest.scenario_id) {throw 'Invalid CM terminal/output identity.'}
+    $normalized=[ordered]@{scenario_id=$Manifest.scenario_id;phase=$Phase;repetition=$Repetition;context_id=$Fixture.context_id;base_sha=$Fixture.base_sha;model_status=$payload.status;correctness='NOT_RUN';metrics=[ordered]@{};verification=[ordered]@{};evidence=@();token_usage='NOT_AVAILABLE';raw_jsonl=($raw.raw_jsonl_path -replace '^external-evidence/','')}
+    $tracePath=Join-Path $ResultDirectory $normalized.raw_jsonl
+    Assert-CmPath $tracePath $ResultDirectory
+    $normalized.native_trace=Read-CmNativeTrace $tracePath ([bool]$ProcessInvoker)
+    # A complete Runner handoff cannot make a native error a valid sample.
+    if($normalized.native_trace.status -ceq 'ERRORS_OBSERVED' -or $normalized.native_trace.error_event_count -gt 0){throw 'CM native error events invalidate the sample; no retry.'}
+    $normalized.runner_trace=$flow.runner_trace
+    $normalized.runner_lifecycle_jsonl=if(Test-Path -LiteralPath $runnerLifecyclePath -PathType Leaf){[IO.Path]::GetFileName($runnerLifecyclePath)}else{'NOT_AVAILABLE'}
+    $normalized.runner_child_contexts=$flow.runner_child_contexts
+    $normalized.goalkeeper_resumptions=$flow.goalkeeper_resumptions
+    $normalized.codex_process_invocations=$flow.codex_process_invocations
+    $normalized.top_level_token_usage='NOT_AVAILABLE'
+    foreach($field in @('metrics','verification')) {
+        $expected=if($field -eq 'metrics'){@($control.metrics)}else{@($control.hard_gates)}
+        $seen=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach($item in $payload.$field) {
+            if(-not $seen.Add($item.key) -or $expected -cnotcontains $item.key){throw 'Unknown or duplicate CM metric key.'}
+            if($null -ne $item.value -and ($item.value -isnot [ValueType] -or $item.value -is [bool] -or [double]$item.value -lt 0 -or [double]$item.value -ne [math]::Floor([double]$item.value))) {throw 'CM metrics require nonnegative integers or null.'}
+            $normalized[$field][$item.key]=if($null -eq $item.value){'NOT_AVAILABLE'}else{$item.value}
+            $normalized.evidence+= [pscustomobject]@{key=$item.key;source='MODEL_REPORTED_UNVERIFIED';text=(Convert-CmEvidenceText $item.evidence)}
+        }
+        if($seen.Count -ne $expected.Count){throw 'CM metric coverage incomplete.'}
+    }
+    $usage=$raw.usage
+    if($usage -isnot [string] -and $null -ne $usage) {
+        $valid=$true;$values=[ordered]@{}
+        foreach($key in @('input_tokens','output_tokens')) {
+            $property=$usage.PSObject.Properties[$key]
+            if($null -eq $property -or $null -eq $property.Value -or $property.Value -isnot [ValueType] -or $property.Value -is [bool] -or [double]$property.Value -lt 0 -or [double]$property.Value -ne [math]::Floor([double]$property.Value)){$valid=$false;break}
+            $values[$key]=$property.Value
+        }
+        # Runner-managed Builder and Verifier sessions are separate contexts.
+        # A top-level terminal usage field does not establish whole-scenario usage.
+        if($valid){$normalized.top_level_token_usage=[pscustomobject]$values}
+    }
+    return [pscustomobject]$normalized
+}
+
+function Write-CmReservation {
+    param([string]$Path,[string]$Text)
+    $stream=New-Object IO.FileStream($Path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::None)
+    try { $bytes=[Text.Encoding]::UTF8.GetBytes($Text);$stream.Write($bytes,0,$bytes.Length);$stream.Flush($true) } finally {$stream.Dispose()}
+}
+
+function Save-CmFixtureEvidence {
+    param($Fixture,[string]$ResultDirectory)
+    Assert-CmGitEnvironment
+    Assert-CmPath (Join-Path $Fixture.path '.git') $Fixture.path
+    $destination=Join-Path $ResultDirectory $Fixture.context_id
+    Assert-CmPath $destination $ResultDirectory
+    New-Item -ItemType Directory -Path $destination -Force|Out-Null
+    $gitEvidence=@{}
+    foreach($request in @(
+        @{Name='candidate';Arguments=@('rev-parse','HEAD')},
+        @{Name='status';Arguments=@('status','--porcelain')},
+        @{Name='graph';Arguments=@('log','--format=%H %P','--all')},
+        @{Name='diff';Arguments=@('diff','--no-ext-diff','--no-textconv','--binary',$Fixture.base_sha,'--')}
+    )) {
+        $gitArguments=$request.Arguments
+        $lines=@(& git --no-pager -C $Fixture.path @gitArguments)
+        $gitExit=$LASTEXITCODE
+        if($gitExit -ne 0){throw ('CM evidence Git '+$request.Name+' failed with exit '+$gitExit)}
+        $gitEvidence[$request.Name]=$lines
+    }
+    if($gitEvidence.candidate.Count -ne 1 -or $gitEvidence.candidate[0] -cnotmatch '^[0-9a-f]{40}$' -or $Fixture.base_sha -cnotmatch '^[0-9a-f]{40}$' -or $gitEvidence.graph.Count -eq 0){throw 'CM evidence requires valid Base/Candidate SHA and a nonempty commit graph.'}
+    $commits=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $parents=New-Object 'System.Collections.Generic.List[string]'
+    foreach($line in $gitEvidence.graph) {
+        $row=([string]$line).Trim()
+        if($row -cnotmatch '^[0-9a-f]{40}( [0-9a-f]{40})*$'){throw 'CM evidence commit graph contains malformed SHAs.'}
+        $shaFields=$row.Split(' ')
+        if(-not $commits.Add($shaFields[0])){throw 'CM evidence commit graph contains duplicate commits.'}
+        for($i=1;$i -lt $shaFields.Count;$i++){$parents.Add($shaFields[$i])}
+    }
+    if(-not $commits.Contains($Fixture.base_sha) -or -not $commits.Contains($gitEvidence.candidate[0]) -or @($parents|Where-Object {-not $commits.Contains($_)}).Count){throw 'CM evidence commit graph omits Base, Candidate or a parent.'}
+    $record=[ordered]@{base_sha=$Fixture.base_sha;candidate_sha=$gitEvidence.candidate[0];initial_status=$Fixture.initial_status;final_status=($gitEvidence.status -join "`n");graph=$gitEvidence.graph;files=@()}
+    $global:LASTEXITCODE=$null
+    $worktreeLines=@(& git --no-pager -C $Fixture.path worktree list --porcelain);$worktreeExit=$LASTEXITCODE
+    if($null -eq $worktreeExit -or $worktreeExit -ne 0){throw 'CM worktree inventory unavailable; preserve fixture.'}
+    $record.worktrees=@()
+    foreach($line in $worktreeLines) {
+        if($line -cnotmatch '^worktree (.+)$'){continue}
+        $worktree=[IO.Path]::GetFullPath($Matches[1])
+        if(-not $worktree.Equals([IO.Path]::GetFullPath($Fixture.path),[StringComparison]::OrdinalIgnoreCase)) {Assert-CmPath $worktree (Join-Path $Fixture.path '.pfc-worktrees')}
+        $capture=@{}
+        foreach($request in @(@{name='head';args=@('rev-parse','HEAD')},@{name='status';args=@('status','--porcelain')},@{name='diff';args=@('diff','--no-ext-diff','--no-textconv','--binary',$Fixture.base_sha,'--')})) {
+            $global:LASTEXITCODE=$null;$arguments=$request.args
+            $value=@(& git --no-pager -C $worktree @arguments);$exit=$LASTEXITCODE
+            if($null -eq $exit -or $exit -ne 0){throw 'CM linked worktree capture failed; preserve fixture.'}
+            $capture[$request.name]=$value
+        }
+        if($capture.head.Count -ne 1 -or -not $commits.Contains($capture.head[0])){throw 'CM worktree HEAD absent from saved graph.'}
+        $relative=if($worktree.Equals([IO.Path]::GetFullPath($Fixture.path),[StringComparison]::OrdinalIgnoreCase)){'.'}else{$worktree.Substring($Fixture.path.TrimEnd('\').Length).TrimStart('\').Replace('\','/')}
+        $diffName='worktree-'+$record.worktrees.Count+'.diff'
+        Write-PfcUtf8NoBom (Join-Path $destination $diffName) ($capture.diff -join "`n")
+        $record.worktrees+= [pscustomobject]@{path=$relative;head_sha=$capture.head[0];status=($capture.status -join "`n");diff=$diffName;files_prefix=('files/'+$relative)}
+    }
+    if($record.worktrees.Count -lt 1){throw 'CM worktree inventory is empty.'}
+    Write-PfcUtf8NoBom -Path (Join-Path $destination 'changes.diff') -Content ($gitEvidence.diff -join "`n")
+    # Enumerate the owned tree, including ignored files. Check each entry before
+    # descending; never follow reparse points or copy .git internals.
+    $directories=New-Object 'System.Collections.Generic.Stack[string]'
+    $directories.Push($Fixture.path)
+    while($directories.Count -gt 0) {
+        foreach($item in Get-ChildItem -LiteralPath $directories.Pop() -Force -ErrorAction Stop) {
+            if($item.Name -eq '.git'){continue}
+            Assert-CmPath $item.FullName $Fixture.path
+            if($item.PSIsContainer){$directories.Push($item.FullName);continue}
+            $relative=$item.FullName.Substring($Fixture.path.TrimEnd('\').Length).TrimStart('\').Replace('\','/')
+            $storedPath='files/'+$relative
+            # PS5.1/.NET file copies may still enforce MAX_PATH. Keep long nested
+            # worktree artifacts in a short owned location, with an exact path map.
+            if((Join-Path $destination $storedPath).Length -ge 240){$storedPath='_long_files/'+$record.files.Count+'.bin'}
+            $target=Join-Path $destination $storedPath;Assert-CmPath $target $destination
+            New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force|Out-Null
+            [IO.File]::Copy($item.FullName,$target,$false)
+            $record.files+= [ordered]@{path=$relative;stored_path=$storedPath;sha256=(Get-CmHash -Path $target);bytes=(Get-Item -LiteralPath $target).Length}
+        }
+    }
+    Write-PfcUtf8NoBom -Path (Join-Path $destination 'fixture-evidence.json') -Content ($record|ConvertTo-Json -Depth 30)
+    return [pscustomobject]@{relative_path=($Fixture.context_id+'/fixture-evidence.json');sha256=(Get-CmHash -Path (Join-Path $destination 'fixture-evidence.json'))}
+}
+
+function Test-CmSafeIdentityStop {
+    param($Manifest,$Sample,$FixtureEvidence,[string]$ResultDirectory)
+    # Narrow CM-05 collection evidence only. This never supplies correctness PASS.
+    if($Manifest.scenario_id -cne 'CM-05' -or $null -eq $Sample.runner_trace -or $Sample.runner_trace.source -cne 'RUNNER' -or $Sample.runner_trace.status -cne 'NO_DISPATCH_OBSERVED' -or $Sample.runner_trace.lifecycle -cne 'NO_CHILD_PROCESSES' -or $Sample.runner_trace.observed_child_contexts -isnot [int] -or $Sample.runner_trace.observed_child_contexts -ne 0 -or $Sample.native_trace.status -cne 'NO_DISPATCH_OBSERVED' -or $Sample.native_trace.lifecycle -cne 'TERMINAL_OBSERVED' -or $Sample.native_trace.observed_child_contexts -isnot [int] -or $Sample.native_trace.observed_child_contexts -ne 0 -or -not $Sample.native_trace.no_dispatch_readonly){return $false}
+    $path=Join-Path $ResultDirectory $FixtureEvidence.relative_path;Assert-CmPath $path $ResultDirectory
+    if((Get-CmHash -Path $path) -cne $FixtureEvidence.sha256){return $false}
+    $record=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json
+    $directory=Split-Path -Parent $path
+    if($record.base_sha -cne $Manifest.base_sha -or $record.candidate_sha -cne $record.base_sha -or $record.initial_status -cne '' -or $record.final_status -cne '' -or $record.worktrees.Count -ne 1 -or $record.worktrees[0].path -cne '.' -or $record.worktrees[0].head_sha -cne $Manifest.base_sha -or $record.worktrees[0].status -cne '' -or [IO.File]::ReadAllText((Join-Path $directory 'changes.diff')) -cne ''){return $false}
+    $expected=@{}
+    foreach($file in $Manifest.fixture.files){$expected[$file.path]=Get-CmHash -Text $file.content}
+    foreach($file in $Manifest.product_inputs){
+        $expected['.pfc-product/'+$file.path]=$file.sha256
+        if($file.path -cmatch '^codex-agents/project-flight-(builder|verifier)\.toml$'){$expected['.codex/agents/'+(Split-Path -Leaf $file.path)]=$file.sha256}
+    }
+    if($record.files.Count -ne $expected.Count){return $false}
+    $seen=@{}
+    foreach($file in $record.files){
+        $stored=Join-Path $directory $file.stored_path;Assert-CmPath $stored $directory
+        if($seen.ContainsKey($file.path) -or -not $expected.ContainsKey($file.path) -or $expected[$file.path] -cne $file.sha256 -or (Get-CmHash -Path $stored) -cne $file.sha256){return $false};$seen[$file.path]=$true
+    }
+    $identities=@()
+    foreach($name in @('WORK_ORDER','STATUS')) {
+        $relative='docs/project-control/'+$name+'.md'
+        $file=@($Manifest.fixture.files|Where-Object path -ceq $relative)[0]
+        if(([string]$Sample.native_trace.identity_reads[$relative]).Replace("`r`n","`n").TrimEnd("`n") -cne ([string]$file.content).Replace("`r`n","`n").TrimEnd("`n")){return $false}
+        $milestone=[regex]::Match($file.content,'(?m)^Milestone: (.+)$').Groups[1].Value
+        $lease=[regex]::Match($file.content,'(?m)^Lease: (.+)$').Groups[1].Value
+        if(-not $milestone -or -not $lease){return $false};$identities+=($milestone+'|'+$lease)
+    }
+    return ($identities[0] -cne $identities[1])
+}
+
+function Test-CmFixtureCleanupEligible {
+    param($Sample)
+    if($null -eq $Sample -or $null -eq $Sample.runner_trace -or $null -eq $Sample.native_trace -or $Sample.runner_trace.source -cne 'RUNNER' -or $Sample.native_trace.lifecycle -cne 'TERMINAL_OBSERVED' -or $Sample.runner_trace.observed_child_contexts -isnot [int]){return $false}
+    $runnerHasNoChildren=$Sample.runner_trace.status -ceq 'NO_DISPATCH_OBSERVED' -and $Sample.runner_trace.lifecycle -ceq 'NO_CHILD_PROCESSES' -and $Sample.runner_trace.observed_child_contexts -eq 0
+    $runnerChildrenComplete=$Sample.runner_trace.status -cin @('OBSERVED','NO_COMPLETE_HANDOFF') -and $Sample.runner_trace.lifecycle -ceq 'TERMINAL_OBSERVED' -and $Sample.runner_trace.observed_child_contexts -gt 0
+    return ($runnerHasNoChildren -or $runnerChildrenComplete)
+}
+
+function Invoke-CmModelDispatch {
+    param([string]$RepositoryRoot,[string]$Phase,[int]$Repeat,[string]$AuthorizationPath,[string]$ResultDirectory,[AllowNull()][string]$CodexExecutablePath,[scriptblock]$ProcessInvoker,[switch]$DiagnosticCanary)
+    $result=[ordered]@{status='NOT_RUN';attempts=0;valid_samples=0;formal_samples=0;correctness='NOT_RUN';automatic_retries=0;samples=@();reason='Preflight not complete.'}
+    $claimed=$false
+    try {
+        Assert-CmGitEnvironment
+        $expectedScenarioIds=@('CM-01','CM-02','CM-03','CM-04','CM-05','CM-06','CM-07')
+        $expectedRepeatCount=5
+        $expectedSampleTarget=35
+        $expectedMaximumAttempts=35
+        if($DiagnosticCanary) {
+            if($Phase -cnotin @('RED','GREEN') -or $Repeat -ne 1){throw 'Diagnostic CM requires RED or GREEN and Repeat 1.'}
+            $expectedScenarioIds=@('CM-01')
+            $expectedRepeatCount=1
+            $expectedSampleTarget=1
+            $expectedMaximumAttempts=1
+        } elseif($Phase -cnotin @('RED','GREEN') -or $Repeat -ne 5) {
+            throw 'Formal CM requires RED or GREEN and Repeat 5.'
+        }
+        Assert-CmPath $AuthorizationPath (Join-Path $RepositoryRoot '.pfc-eval-results/authorizations') $RepositoryRoot
+        Assert-CmPath $ResultDirectory (Join-Path $RepositoryRoot '.pfc-eval-results') $RepositoryRoot
+        $authorizationHash=Get-CmHash -Path $AuthorizationPath
+        $authorization=Read-CmAuthorization $AuthorizationPath
+        Assert-CmProperties $authorization @('authorization_id','phase','scenario_ids','repetitions_per_scenario','valid_run_target','maximum_attempts','model','reasoning_effort','sandbox','control_sha256','bindings','no_retry','remote_actions','issued_at','test_only','product','runner_managed_roles')
+        foreach($textName in @('authorization_id','phase','model','reasoning_effort','sandbox','control_sha256','issued_at')) {if($authorization.$textName -isnot [string]){throw 'Authorization control must be a JSON string.'}}
+        if($authorization.scenario_ids -isnot [array] -or $authorization.scenario_ids.Count -ne $expectedScenarioIds.Count -or @($authorization.scenario_ids|Where-Object {$_ -isnot [string]}).Count -or $authorization.bindings -isnot [array] -or $authorization.bindings.Count -ne $expectedScenarioIds.Count){throw 'Authorization scenario IDs and bindings do not match this run scope.'}
+        $issued=[DateTimeOffset]::MinValue
+        foreach($countName in @('repetitions_per_scenario','valid_run_target','maximum_attempts')) {if($authorization.$countName -isnot [int]){throw 'Authorization quota must be a JSON integer.'}}
+        if($authorization.issued_at -isnot [string] -or $authorization.issued_at -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$'){throw 'Authorization timestamp requires an explicit timezone.'}
+        if($authorization.authorization_id -cnotmatch '^[A-Za-z0-9][A-Za-z0-9_-]{7,100}$' -or $authorization.phase -cne $Phase -or ($authorization.scenario_ids -join ',') -cne ($expectedScenarioIds -join ',') -or $authorization.repetitions_per_scenario -ne $expectedRepeatCount -or $authorization.valid_run_target -ne $expectedSampleTarget -or $authorization.maximum_attempts -ne $expectedMaximumAttempts -or $authorization.no_retry -isnot [bool] -or -not $authorization.no_retry -or $authorization.remote_actions -isnot [bool] -or $authorization.remote_actions -or -not [DateTimeOffset]::TryParse($authorization.issued_at,[ref]$issued)) {throw 'Authorization scope or issue timestamp is invalid.'}
+        if($authorization.test_only -isnot [bool] -or $authorization.test_only -ne [bool]$ProcessInvoker -or ($authorization.authorization_id -cmatch '^FAKE-' -and -not $ProcessInvoker)) {throw 'Fake authorization is forbidden at the formal boundary.'}
+        if($authorization.control_sha256 -cne (Get-CmHash -Path (Join-Path $RepositoryRoot 'evals/expected/continuous-mode-model/frozen-control.json'))){throw 'Authorization control hash drift.'}
+        $control=Get-CmFrozenControl $RepositoryRoot
+        $selectedEntries=@($control.scenarios|Where-Object {$expectedScenarioIds -contains $_.scenario_id})
+        if($selectedEntries.Count -ne $expectedScenarioIds.Count){throw 'Authorized scenario is absent from frozen control.'}
+        if($DiagnosticCanary -and [int]$control.runner_managed_roles.maximum_authorized_role_contexts_per_attempt -ne 13){throw 'Diagnostic Runner role limit differs from 13.'}
+        if(($authorization.product|ConvertTo-Json -Depth 60 -Compress) -cne ($control.product|ConvertTo-Json -Depth 60 -Compress)){throw 'Explicit product authorization missing or mismatched.'}
+        Assert-CmRunnerRoleAuthorization -Expected $control.runner_managed_roles -Authorized $authorization.runner_managed_roles
+        foreach($field in @('model','reasoning_effort','sandbox')) {if($authorization.$field -cne $control.$field){throw 'Authorization process controls mismatch.'}}
+        if(($authorization.bindings|ConvertTo-Json -Depth 60 -Compress) -cne ($selectedEntries|ConvertTo-Json -Depth 60 -Compress)){throw 'Authorization scenario bindings mismatch.'}
+        $claimRoot=Join-Path $RepositoryRoot '.pfc-eval-results/continuous-mode-model-claims';Assert-CmPath $claimRoot (Join-Path $RepositoryRoot '.pfc-eval-results') $RepositoryRoot
+        New-Item -ItemType Directory -Path $claimRoot,$ResultDirectory -Force | Out-Null
+        $claimName=Get-CmHash -Text $authorization.authorization_id
+        $claim=Join-Path $claimRoot ($claimName+'.claim')
+        if(Test-Path -LiteralPath $claim){throw 'Authorization already claimed; replay/crash cannot reset attempts.'}
+        # Rebuild every selected fixture before acquiring the claim or starting any model.
+        foreach($entry in $selectedEntries) {
+            $manifest=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $RepositoryRoot $entry.manifest_path)|ConvertFrom-Json
+            $fixture=New-CmFixture $manifest
+            try {if($fixture.base_sha -cne $manifest.base_sha){throw 'Physical fixture base does not match authorization.'}}finally{Remove-CmFixture $fixture.path}
+        }
+        if((Get-CmHash -Path $AuthorizationPath) -cne $authorizationHash){throw 'Authorization changed during preflight.'}
+        Write-CmReservation $claim ('authorization_sha256='+$authorizationHash+[Environment]::NewLine+'maximum_attempts='+$expectedMaximumAttempts+[Environment]::NewLine)
+        $claimed=$true
+        foreach($entry in $selectedEntries) {
+            for($repetition=1;$repetition -le $Repeat;$repetition++) {
+                if($result.attempts -ge $expectedMaximumAttempts){throw 'Attempt cap reached.'}
+                if((Get-CmHash -Path $AuthorizationPath) -cne $authorizationHash){throw 'Authorization changed after claim; no further attempt permitted.'}
+                # Revalidate all frozen artifacts between attempts as well as before the first.
+                $null=Get-CmFrozenControl $RepositoryRoot
+                $manifest=Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $RepositoryRoot $entry.manifest_path)|ConvertFrom-Json
+                $fixture=New-CmFixture $manifest
+                $sample=$null
+                try {
+                    $result.attempts++
+                    $reservation=Join-Path $claimRoot ($claimName+'.attempt-'+$result.attempts+'.json')
+                    Write-CmReservation $reservation (@{scenario_id=$entry.scenario_id;phase=$Phase;repetition=$repetition;context_id=$fixture.context_id;test_only=[bool]$ProcessInvoker}|ConvertTo-Json -Compress)
+                    $sample=Invoke-CmModelSample -RepositoryRoot $RepositoryRoot -Manifest $manifest -Fixture $fixture -Phase $Phase -Repetition $repetition -ResultDirectory $ResultDirectory -CodexExecutablePath $CodexExecutablePath -ProcessInvoker $ProcessInvoker
+                    if($DiagnosticCanary -and ($sample.runner_child_contexts -gt 13 -or $sample.goalkeeper_resumptions -gt 13 -or $sample.codex_process_invocations -gt 27)){throw 'Diagnostic Runner or Codex process limit exceeded; no retry.'}
+                } finally {
+                    try {$fixtureEvidence=Save-CmFixtureEvidence -Fixture $fixture -ResultDirectory $ResultDirectory}
+                    catch {throw ('Fixture retained after incomplete capture: '+$fixture.context_id+'; '+$_.Exception.Message)}
+                    # Keep evidence on disk until both Runner and Goalkeeper lifecycle records are complete.
+                    if(Test-CmFixtureCleanupEligible -Sample $sample){Remove-CmFixture $fixture.path}
+                }
+                $sample|Add-Member -NotePropertyName fixture_evidence -NotePropertyValue $fixtureEvidence
+                $sample|Add-Member -NotePropertyName fixture_retained -NotePropertyValue (Test-Path -LiteralPath $fixture.path)
+                $sample|Add-Member -NotePropertyName sample_validity -NotePropertyValue 'NOT_AVAILABLE'
+                if($sample.runner_trace.status -ceq 'OBSERVED'){$sample.sample_validity='RUNNER_MANAGED_INDEPENDENT_HANDOFF_OBSERVED'}
+                elseif(Test-CmSafeIdentityStop $manifest $sample $fixtureEvidence $ResultDirectory){$sample.sample_validity='CM05_IDENTITY_STOP_OBSERVED'}
+                else {$result.samples+=$sample;throw 'Required Runner-owned handoff or bounded identity-stop evidence unavailable; no retry. Unknown child lifecycle retains the fixture.'}
+                $result.samples+= $sample;$result.valid_samples++
+                if(-not $ProcessInvoker -and -not $DiagnosticCanary){$result.formal_samples++}
+                Write-PfcUtf8NoBom -Path (Join-Path $ResultDirectory ($claimName+'.normalized.json')) -Content ($result|ConvertTo-Json -Depth 60)
+            }
+        }
+        $result.status=if($ProcessInvoker){'SIMULATED'}else{'COLLECTED'}
+        $result.reason='Collection only; independent correctness/evidence review and comparison gates remain NOT_RUN.'
+    } catch {
+        if($result.attempts -gt 0){$result.status='STOPPED'}
+        $result.reason=Convert-CmEvidenceText $_.Exception.Message
+    }
+    if($claimed){Write-PfcUtf8NoBom -Path (Join-Path $ResultDirectory ($claimName+'.normalized.json')) -Content ($result|ConvertTo-Json -Depth 60)}
+    return [pscustomobject]$result
+}
+
+function Invoke-ContinuousModeModel {
+    $repository=Split-Path -Parent $PSScriptRoot
+    $result=Invoke-CmModelDispatch -RepositoryRoot $repository -Phase $Phase -Repeat $Repeat -AuthorizationPath $AuthorizationPath -ResultDirectory (Join-Path $repository '.pfc-eval-results/continuous-mode-model') -CodexExecutablePath $CodexExecutablePath -DiagnosticCanary:$DiagnosticCanary
+    return New-PfcResult -ScenarioId 'continuous-mode-model' -Status $(if($result.status -eq 'COLLECTED'){'PARTIAL'}elseif($result.status -eq 'NOT_RUN'){'NOT_RUN'}else{'FAIL'}) -Message ($result|ConvertTo-Json -Depth 60 -Compress)
+}
+
+function Invoke-ContinuousModeModelContract {
+    . (Join-Path $PSScriptRoot 'tests\ContinuousModeModelContract.Tests.ps1')
+    return Invoke-CmModelContractTests -RepositoryRoot (Split-Path -Parent $PSScriptRoot)
+}
+
 $results = & (Get-Command ("Invoke-{0}" -f $Suite)).Name
 $failed = @($results | Where-Object { $_.Status -eq 'FAIL' }).Count -gt 0
+if ($Suite -in @('ContinuousMode','ContinuousModeWindowsSmoke') -and @($results | Where-Object { $_.Status -cne 'PASS' }).Count -gt 0) { $failed = $true }
+if ($Suite -eq 'ContinuousModeModel' -and @($results | Where-Object { $_.Status -cne 'PARTIAL' }).Count -gt 0) { $failed = $true }
 Write-PfcSummary -Results @($results) -Json:$Json
 if ($failed) { exit 1 }
 exit 0

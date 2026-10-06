@@ -1,4 +1,16 @@
 # VERIFY_ORDER
+Authorization ID: NOT_APPLICABLE
+Authorization Status: NOT_APPLICABLE
+Wave ID: NOT_APPLICABLE
+Work Order ID: NOT_APPLICABLE
+Risk: NOT_APPLICABLE
+Validation Plan: NOT_APPLICABLE
+Repository Identity: NOT_APPLICABLE
+Path Policy: NOT_APPLICABLE
+Builder Evidence SHA: NOT_APPLICABLE
+Acceptance Record Target: NOT_APPLICABLE
+Pre-review Identity Gate: NOT_APPLICABLE
+Wave Impact Checks: NOT_APPLICABLE
 Control Run ID: UNKNOWN
 Lease Epoch: UNKNOWN
 Goal ID: UNKNOWN

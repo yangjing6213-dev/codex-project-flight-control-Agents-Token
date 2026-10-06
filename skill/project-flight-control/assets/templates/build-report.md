@@ -1,4 +1,10 @@
 # BUILD_REPORT
+Builder Echo: NOT_APPLICABLE
+Issue Classification: NOT_APPLICABLE
+Repair Attempts: NOT_APPLICABLE
+Tier Results: NOT_APPLICABLE
+Wave Impact: NOT_APPLICABLE
+Automatic Continuation Eligibility: NOT_APPLICABLE
 Control Run ID: UNKNOWN
 Lease Epoch: UNKNOWN
 Goal ID: UNKNOWN

@@ -1,6 +1,6 @@
 interface:
   display_name: "Project Flight Control"
-  short_description: "Control complex Codex development with isolated Builder and Verifier roles."
-  default_prompt: "$project-flight-control"
+  short_description: "Control projects with isolated build and review."
+  default_prompt: "Use $project-flight-control START to coordinate this project with isolated Builder and Verifier roles."
 policy:
   allow_implicit_invocation: false

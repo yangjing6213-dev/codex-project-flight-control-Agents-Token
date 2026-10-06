@@ -2,23 +2,24 @@
 
 ## Codex 三角色项目闭环控制 Skill 产品与行为设计规格
 
-- **文档版本**：`PFC-DESIGN-v1.0-approved`
-- **日期**：2026-09-03
+- **文档版本**：`PFC-DESIGN-v2.0-approved`
+- **日期**：2026-09-20
 - **状态**：`APPROVED_FOR_IMPLEMENTATION`
-- **本轮收敛决策**：`D-032` 至 `D-069`
+- **本轮收敛决策**：`D-070` 至 `D-091`
 - **目标平台**：Codex
 - **V1 正式支持环境**：Windows 10/11、PowerShell、Git for Windows、Codex 本地环境
-- **实现状态**：`NOT_RUN`
-- **行为评估状态**：`NOT_RUN`
+- **V1 实现状态**：`PARTIAL`
+- **V2 实现状态**：`NOT_RUN`
+- **V2 行为评估状态**：`NOT_RUN`
 - **Specialist 运行时能力状态**：`UNKNOWN`
 - **Specialist 是否为核心发布依赖**：`NO`
-- **仓库名称**：`codex-project-flight-control`
+- **仓库名称**：`codex-project-flight-control-Agents-Token-`
 - **Skill 名称**：`project-flight-control`
 - **显式调用**：`$project-flight-control`
 - **显示名称**：`Project Flight Control`
 - **中文名称**：`Codex 项目航向控制`
 
-> 本文档已于 2026-09-03 获用户整体批准，是多轮设计决策的唯一权威规格。D-032 至 D-069 已直接并入对应章节，不另建效率扩展或 Specialist 扩展规格。它用于交付 Codex 实现 Skill、两个正式 Custom Agent、Windows 安装工具和行为评估，不是最终 `SKILL.md`，也不代表实现、Token 降低、Specialist 可用性或发布门禁已经通过验证。
+> 本文档的 V1 部分已于 2026-09-03 获用户整体批准。2026-09-20 的 V2 连续执行升级方案（SHA-256 `afb3c30310fd23630e36926518631a6bcb12442a90908655d20e3104c498e819`）作为本轮设计输入，D-070 至 D-091 已在本文档中收敛并解决审计发现的冲突。用户已于 2026-09-20 批准该 V2 合并规格。本文档继续作为唯一权威规格，但批准不代表实现、连续模式评测或发布门禁已经通过。
 
 ---
 
@@ -190,6 +191,28 @@ V1 不负责：
 | D-067 | Specialist 与 V1 发布边界 | Specialist 是条件增强，不阻断三角色核心 V1 发布；必要任务仍按能力门禁处理 |
 | D-068 | Specialist 能力检测时机 | `doctor` 做预检，实际调用前再做轻量复核 |
 | D-069 | Specialist 能力主动验证 | 普通 `doctor` 被动且零模型调用；显式 Smoke Test 或一次真实成功调用才能确认 `AVAILABLE` |
+| D-070 | 连续模式形态 | `CONTINUOUS_MODE` 是 `START` / `RESUME` 的执行策略，不是第五个顶层模式 |
+| D-071 | 启用方式 | 仅用户显式启用；Goalkeeper 不得从默认策略自行切换 |
+| D-072 | 授权持久化 | 用户批准的稳定范围只写入一个机器可读 Authorization；运行租约写入 STATUS / Checkpoint |
+| D-073 | 授权范围 | 支持单里程碑、范围、阶段、明确任务列表和 Stop Gate；授权不因恢复而扩大 |
+| D-074 | 自动延续 | 仅当前里程碑 Accepted 且全部连续门禁通过时进入下一里程碑 |
+| D-075 | Wave | Wave 是最多五个预批准里程碑的顺序编排容器，不替代 Candidate 或里程碑验收 |
+| D-076 | 身份门禁 | 使用写入前和审查前两道身份门禁，分别锁定 Builder 写入与 Verifier 审查对象 |
+| D-077 | 风险分级 | `LOW / MEDIUM / HIGH`；不确定时上调，HIGH 独立成 Wave 并进入用户 Gate |
+| D-078 | 验证分级 | `T1` 每任务、`T2` 每 Candidate、`T3` 每 Wave、`T4` 阶段 Gate |
+| D-079 | 问题分类 | 产品、测试基础设施、控制面、环境、文档、外部依赖、安全数据风险分别处理 |
+| D-080 | 自动修复预算 | Builder 同一路径最多两次代码修复；最多两轮自动返工；Candidate 为 `R1` 至 `R3` |
+| D-081 | 不收敛停止 | 同一核心失败跨两轮返工仍存在、两轮无新增通过项或根因不明时停止自动修复 |
+| D-082 | 控制面事故 | 控制面缺陷不抹除已证明的产品事实，但修复后必须重新建立绑定当前 SHA 的治理证据 |
+| D-083 | 脏工作区 | 来源不明的 dirty worktree 不允许连续写入，先进入 Recovery Readiness |
+| D-084 | 历史材料 | 未跟踪历史材料必须分类、可逆隔离或明确排除，不得自动提交或删除 |
+| D-085 | 已知限制 | 已确认的环境限制和 fallback 统一登记并按 ID 引用，不逐任务重复调查 |
+| D-086 | 关键 Gate | 阶段 Gate、合同变化、HIGH 风险及外部不可逆动作需要用户决定 |
+| D-087 | 本地 Commit | 仅在 Authorization 明确允许时自动创建本地 Commit；远程动作仍需单独授权 |
+| D-088 | 低风险审查 | LOW 里程碑仍逐项独立验证；完整系统回归集中到 Wave 末 |
+| D-089 | 恢复 | 根据 Authorization、STATUS、Git、Checkpoint 和持久证据恢复，不重新询问仍有效的范围 |
+| D-090 | 兼容性 | 未显式启用连续策略时，V1 默认暂停行为完全不变且不创建连续控制文件 |
+| D-091 | 版本 | V2 开发版本为 `0.2.0-dev.0`；完成全部门禁前不得声明稳定版或提升到 `1.0.0` |
 
 ---
 
@@ -2416,7 +2439,7 @@ Next Reforecast：指定节点
 
 ---
 
-# 18. 默认自治与连续模式
+# 18. V1 默认自治与连续模式基线
 
 ## 18.1 默认模式
 
@@ -2432,6 +2455,8 @@ PAUSE_AFTER_MILESTONE
 - 等待用户批准下一里程碑。
 
 ## 18.2 受控连续模式
+
+本节保留 V1 已批准的最低原则；V2 的持久授权、双身份门禁、Wave、风险与验证规则由第 32 至 44 节收敛定义。
 
 用户可以预先开启：
 
@@ -4010,7 +4035,7 @@ NOT_RUN
 
 ---
 
-# 30. 规格自审结果
+# 30. V1 规格自审结果
 
 ## 30.1 Placeholder 检查
 
@@ -4094,9 +4119,9 @@ Runtime Token Telemetry
 
 ---
 
-# 31. 规格批准后的下一阶段
+# 31. V1 规格批准后的实施阶段
 
-本次 D-032 至 D-069 已直接收敛进主规格，并完成一致性、范围与能力声明审查。当前状态为 `APPROVED_FOR_IMPLEMENTATION`；本规格已获用户整体批准，现进入实现计划阶段。
+V1 的 D-032 至 D-069 已直接收敛进主规格，并完成一致性、范围与能力声明审查。V1 规格状态为 `APPROVED_FOR_IMPLEMENTATION`；本段只记录 V1 的历史实施入口，不表示第 32 至 44 节的 V2 规格已获批准。
 
 实现计划应按以下顺序交付 Codex：
 
@@ -4125,3 +4150,563 @@ Runtime Token Telemetry
 - 不创建最终 Skill 或 Agent 配置；
 - 不声称角色隔离、效率收益或 Token 降低已经成立；
 - 不跳过 RED 基线直接编写最终实现。
+
+---
+
+# 32. V2 阶段内连续执行目标
+
+## 32.1 目标
+
+V2 在现有三角色闭环内把 `CONTINUOUS_MODE` 实现为可持久化、可恢复、可验证的执行策略：
+
+```text
+用户显式批准一个有边界的范围
+→ Goalkeeper 持久化稳定授权
+→ 规划最多五个里程碑的顺序 Wave
+→ 每个里程碑仍独立 Builder / Candidate / Verifier / Acceptance
+→ 普通问题在预算内自动修复
+→ Wave 末执行集成验证
+→ 到 Stop Gate、HIGH 风险或合同变化时暂停
+```
+
+V2 保留 V1 的全部权责边界：Goalkeeper 是唯一控制文件写入者；Builder 是业务实现写入者；Verifier 只审查冻结 Candidate；Specialist 仍为临时、只读、无正式裁决权的条件能力。
+
+## 32.2 非目标
+
+V2 不新增第二个 Skill、第五个顶层模式、第四个固定 Agent、并行写入 Builder、后台服务、数据库、遥测、Repo Map、语义索引或长期 Memory。它不自动 Push、Merge、Release、Deploy、变更生产、执行管理员动作、安装未批准依赖或接受破坏性迁移。
+
+连续模式只减少已批准范围内的重复人工 Gate，不降低正确性、安全、权限、版本、独立验证或证据门槛，也不承诺固定 Token、时间或成本节省比例。
+
+## 32.3 兼容性
+
+未显式启用连续策略时：
+
+- 执行策略保持 `PAUSE_AFTER_MILESTONE`；
+- 不创建 Authorization、Wave 或 Continuation 文件；
+- V1 的 `START / RESUME / AUDIT / STATUS_ONLY`、Candidate、Accepted Checkpoint、Goal 最终审计和固定回执保持不变。
+
+---
+
+# 33. 调用、授权与状态模型
+
+## 33.1 调用语法
+
+合法入口：
+
+```text
+$project-flight-control START CONTINUOUS_MODE UNTIL=PHASE-A-GATE
+$project-flight-control RESUME CONTINUOUS_MODE
+$project-flight-control RESUME CONTINUOUS_MODE ACTION=PAUSE
+$project-flight-control STATUS_ONLY
+```
+
+`CONTINUOUS_MODE` 只设置 `execution_policy: CONTINUOUS`。`invocation_mode` 仍只能是 `START` 或 `RESUME`；静态检查和 Schema 必须拒绝把 `CONTINUOUS_MODE` 解析为第五个顶层模式。
+
+## 33.2 两套不混用的状态
+
+Authorization 状态：
+
+```text
+ACTIVE
+PAUSED
+INVALIDATED
+SUSPENDED_BY_RUNTIME_ROLLBACK
+EXHAUSTED
+```
+
+运行状态：
+
+```text
+DISABLED
+ARMED
+ACTIVE
+BLOCKED
+STOP_GATE_REACHED
+COMPLETED
+```
+
+允许迁移：
+
+- 新批准授权进入 `ACTIVE / ARMED`；
+- 首个身份门禁通过后进入 `ACTIVE / ACTIVE`；
+- 用户暂停进入 `PAUSED / BLOCKED`，并保存 Checkpoint；
+- Stop Gate 到达进入 `ACTIVE / STOP_GATE_REACHED`，随后将授权置为 `EXHAUSTED`；
+- 范围完成进入 `EXHAUSTED / COMPLETED`；
+- 合同变化、Base 漂移、未知 dirty worktree、分支变化、硬阻塞或 Goal 变化进入 `INVALIDATED / BLOCKED`；
+- 运行时回滚进入 `SUSPENDED_BY_RUNTIME_ROLLBACK / BLOCKED`。
+
+`PAUSED` 可由原授权用户恢复；`INVALIDATED`、`EXHAUSTED` 和 `SUSPENDED_BY_RUNTIME_ROLLBACK` 必须由新的用户决定重新授权，不得由 Goalkeeper 自动恢复。
+
+## 33.3 稳定授权与运行租约分离
+
+Authorization 只保存用户批准后在会话恢复间保持稳定的事实。每次 `START` 或 `RESUME` 新生成的 `Control Run ID`、`Lease Epoch`、当前 Wave、当前里程碑和活动租约属于 STATUS / Continuation Checkpoint，不能写回成永久授权范围。
+
+`authorized_base_checkpoint_sha` 是授权生效时的链起点，不是所有后续里程碑重复使用的运行 Base。Continuation Checkpoint 必须记录 `previous_accepted_checkpoint_sha`、`current_milestone_base_sha` 和 `expected_builder_start_sha`：首个里程碑的运行 Base 等于授权链起点；后续里程碑的运行 Base 必须等于前一 Accepted Checkpoint，并且 Git 证明授权链起点是该 SHA 的祖先。`expected_builder_start_sha` 只描述本次 Builder Lease 的准确起点，不改变 Milestone Base。任何无法证明的断链为 `BASELINE_DRIFT`。
+
+---
+
+# 34. 持久化控制文件
+
+## 34.1 单一权威规则
+
+Goalkeeper 先寻找项目现有等价来源。仅当没有等价机器可读来源时，使用：
+
+```text
+docs/project-control/CONTINUOUS-AUTHORIZATION.yaml
+docs/project-control/WAVE-PLAN.yaml
+docs/project-control/KNOWN-LIMITATIONS.md
+docs/project-control/BLOCKER-FALLBACK-MATRIX.md
+docs/project-control/CONTINUATION-CHECKPOINT.md
+```
+
+路径必须登记在 STATUS 的 `Canonical Project Sources`。同一事实只能有一个权威文件；重复 Authorization 或 Wave 来源是 `CONTROL_PLANE_DEFECT` 并在写入前停止。
+
+## 34.2 Repository 与路径身份
+
+`repository_identity` 使用 `PFC_GIT_COMMON_DIR_SHA256_V1`：解析 `git rev-parse --git-common-dir` 为绝对路径，在 Windows 上转换为小写、将反斜杠改为 `/`、移除末尾 `/`，对 `pfc.repo.v1\n` 加规范化结果执行 SHA-256。仓库移动或 Git common dir 改变会使授权失效。
+
+路径集合使用 `PFC_REPO_PATH_SET_SHA256_V1`：每个仓库相对路径转换为 `/`、Unicode NFC、移除 `.` 段、拒绝 `..` 越界，在 Windows 上小写，去重排序后以 LF 连接，再对 `pfc.paths.v1\n` 加连接结果执行 SHA-256。Authorization、Milestone Contract、Work Order 和 Builder Echo 必须使用同一算法。
+
+`worktree_identity` 使用 `PFC_WORKTREE_ROOT_SHA256_V1`：解析 Worktree 根为绝对路径，执行与 Repository Identity 相同的 Windows 大小写、分隔符和末尾 `/` 规范化，再对 `pfc.worktree.v1\n` 加规范化结果执行 SHA-256。Goalkeeper 的 Worktree 注册表、WAVE-PLAN 和 Builder Echo 必须使用同一结果。
+
+## 34.3 Authorization 最小合同
+
+```yaml
+schema_version: pfc.continuous-authorization.v1
+authorization_id: AUTH-20260920-001
+authorization_status: ACTIVE
+execution_policy: CONTINUOUS
+invocation_mode: START
+
+goal:
+  goal_id: GOAL-001
+  goal_version: 3
+
+scope:
+  type: MILESTONE_RANGE
+  from: A-015
+  to: A-030
+  stop_gate: A-030
+
+repository:
+  identity_algorithm: PFC_GIT_COMMON_DIR_SHA256_V1
+  repository_identity: 4c8d54f20a55a881f3d5da6d9d6ca9ac8552df95c6554524b75364734b5edca6
+  authorized_base_checkpoint_sha: 0123456789abcdef0123456789abcdef01234567
+  source_branch: main
+  write_branch_policy: MILESTONE_WORKTREE_ONLY
+  write_branch_namespace: codex/pfc/AUTH-20260920-001/
+  default_branch_write: false
+
+paths:
+  hash_algorithm: PFC_REPO_PATH_SET_SHA256_V1
+  writable_paths_hash: 9d3989a3d8d8ee98cbf21b4eb0f225c15f4790f6a5da2128fb48b846b7c0e5c9
+  forbidden_paths_hash: 596e91b75f90e3418ff761e88e8aa2ee38e0877885698ac2723cc71ce7a73af5
+
+permissions:
+  local_commit: true
+  existing_dependency_use: true
+  planned_dependency_install: false
+  non_destructive_migration: true
+  automatic_repair: true
+
+limits:
+  max_wave_size: 5
+  max_builder_code_repair_attempts: 2
+  max_auto_rework_rounds: 2
+  max_candidate_revisions: 3
+  max_consecutive_blocked_milestones: 1
+
+forbidden:
+  push: true
+  merge: true
+  release: true
+  deploy: true
+  destructive_migration: true
+  administrator_action: true
+  paid_action: true
+  cross_project_write: true
+
+approval:
+  approved_by: USER
+  approved_at: 2026-09-20T00:00:00Z
+  source_decision_id: DEC-001
+
+invalidation_triggers:
+  - CONTRACT_CHANGE
+  - AUTHORIZED_SCOPE_EXHAUSTED
+  - STOP_GATE_REACHED
+  - BASELINE_DRIFT
+  - BRANCH_CHANGE
+  - UNKNOWN_DIRTY_WORKTREE
+  - USER_PAUSE
+  - HARD_BLOCKER
+  - GOAL_CHANGE
+```
+
+示例哈希仅用于结构说明；模板必须使用明显的合成值，运行时由 Goalkeeper 从实际事实计算，不得复制示例值。
+
+`source_branch` 只描述来源基线。连续模式永远不能直接写默认分支；Builder 只能在 `write_branch_namespace` 下的专用里程碑 Worktree 分支写入。
+
+## 34.4 STATUS 摘要
+
+STATUS 只引用而不复制完整授权，并新增：
+
+```text
+Execution Policy
+Continuous Authorization ID / Status
+Continuous Execution State
+Authorized Scope
+Stop Gate
+Current Wave ID / State / Progress
+Current Risk Level
+Validation Tier
+Pre-write Identity Gate
+Pre-review Identity Gate
+Known Limitation IDs
+Repair Budget Used / Remaining
+Consecutive Blocked Count
+Continuation Checkpoint
+Next Automatic Action
+```
+
+---
+
+# 35. 双阶段 Task Identity Gate
+
+## 35.1 写入前门禁
+
+Goalkeeper 在签发 Builder 写入租约前比较：
+
+```text
+Authorization ID / Status / Scope
+Goal ID / Version
+Active Plan Milestone ID
+Milestone Contract ID / Version
+Work Order ID / Milestone ID
+Builder Echo
+Repository Identity
+Milestone Worktree Identity
+Milestone Worktree Exact Branch
+Authorized Base Checkpoint SHA / Previous Accepted Checkpoint SHA
+Current Milestone Base SHA
+Expected Builder Start SHA / Actual Worktree HEAD
+Writable / Forbidden Path Hash
+Control Run ID
+Lease Epoch
+Risk Level
+Validation Plan
+```
+
+首次执行或 `ACTIVE` 且无 Candidate 的 RESUME，`Expected Builder Start SHA` 必须等于 Current Milestone Base，或是只包含第 11.2 至 11.3 节允许控制文件变更的后继 Commit。实际 Worktree HEAD 必须精确等于 Expected Start；若恢复时存在已知未提交实现，Git status、文件哈希和允许路径必须精确匹配 Continuation Checkpoint 的恢复清单，任何未知变化进入 `RECOVERY_REQUIRED`。
+
+已有 Candidate 的 REWORK 或 RESUME 时，Milestone Base 保持不变，`Expected Builder Start SHA` 由最新 REWORK_ORDER / WORK_ORDER 和 Continuation Checkpoint 冻结；实际 HEAD 必须精确等于 Expected Start。Expected Start 必须等于当前 Candidate，或是只包含允许控制文件变更的后继 Commit；`git diff --name-only CurrentCandidate..ExpectedStart` 的每个路径都必须位于控制文件白名单。修复次数和 Candidate Revision 不因 RESUME 或控制记录 Commit 重置。
+
+首个里程碑要求 `Current Milestone Base SHA = Authorized Base Checkpoint SHA`；后续里程碑要求 `Current Milestone Base SHA = Previous Accepted Checkpoint SHA`，且 `git merge-base --is-ancestor AuthorizedBase CurrentBase` 成功。精确分支必须由冻结 WAVE-PLAN 为该里程碑指定，并位于 Authorization 的 branch namespace 内。Worktree Identity 必须与 Goalkeeper 注册表一致。
+
+全部一致为 `PRE_WRITE_IDENTITY_GATE_PASS`；任一不一致为 `STOP_BEFORE_WRITE`。写入门禁不引用尚未创建的 Verifier 或 Candidate。
+
+Builder Echo 必须在任何业务文件写入前返回上述投影。Goalkeeper 校验后才签发单一 Builder Lease。
+
+## 35.2 审查前门禁
+
+Candidate Commit 冻结后，Goalkeeper 生成 VERIFY_ORDER。Verifier 独立核对：
+
+```text
+Authorization ID / Status
+Goal / Milestone / Work Order / Verify Order
+Repository Identity
+Base SHA / Candidate SHA
+Changed Files 与 Path Policy
+Risk Level / Validation Tier
+Builder Evidence SHA
+Wave ID
+Acceptance Record Target
+```
+
+全部一致为 `PRE_REVIEW_IDENTITY_GATE_PASS`；否则为 `CONTROL_PLANE_DEFECT`，不得开始技术验收。旧 SHA Evidence、错误任务标题、错误 Work Order 或 Candidate 漂移均为 `STALE_REPORT_REJECTED` 或 `VERSION_INTEGRITY_FAIL`。
+
+---
+
+# 36. Wave 顺序编排
+
+Wave 是一至五个已预批准里程碑的顺序容器。它不改变“一次只有一个业务写入者”，也不允许多个 Builder 同时修改同一工作区。
+
+选择规则：
+
+1. 读取有效 Authorization、Backlog 和 Accepted Checkpoint；
+2. 排除已完成、被阻塞、依赖未满足或范围外任务；
+3. 按 P0、关键路径、下游阻塞数、风险和代码邻近度排序；
+4. LOW Wave 最多五项；
+5. MEDIUM Wave 最多三项；
+6. HIGH 必须单项 Wave；
+7. UI 不早于必要事实源；
+8. 可选视觉和发布工作不阻塞核心路径；
+9. 冻结一个 WAVE-PLAN；
+10. 每项生成独立 Work Order、Candidate、Review 和 Acceptance。
+
+下一项只有在以下全部成立时自动开始：当前项 `ACCEPTED`；Candidate、Evidence、Acceptance SHA 一致；两道身份门禁适用项通过；所有 `required: true` 验证为 PASS；无 BLOCKER / MAJOR；无合同、范围、路径或 Goal 变化；无 HIGH 或不可逆动作待决定；无验收必要的活动 Specialist；Convergence 不是 STALLED / REGRESSING；Authorization 仍 ACTIVE；下一项在冻结 Wave 内。
+
+Wave 末 T3 失败时只重新打开有证据关联的里程碑；无法归因时阻塞 Wave，不无差别重做已验证工作。
+
+Wave 末 T3 PASS 后，Goalkeeper 按固定顺序执行：
+
+1. 持久化 WAVE_SUMMARY、最后 Accepted Checkpoint 和控制记录 Commit；
+2. 先判断 Stop Gate，已到达则进入 `STOP_GATE_REACHED` 并暂停；
+3. 再判断授权范围是否耗尽，耗尽则进入 `EXHAUSTED / COMPLETED`；
+4. 再复核 Authorization、Git、Contract、Known Limitations 和硬停止条件；
+5. 仍可继续时，从剩余授权范围选择下一批一至五项，以上一 Accepted Checkpoint 为 Base 冻结新的 WAVE-PLAN；
+6. 对新 Wave 首项执行完整写入前身份门禁后自动继续，不要求逐 Wave 重新授权。
+
+每个已结束 Wave 使用 `wave-report.md` 形成不可变证据；唯一活动 `WAVE-PLAN.yaml` 可由 Goalkeeper 在控制记录 Commit 中切换到下一 Wave。SC-37 必须覆盖一个超过五项、跨两个 Wave 的 LOW 范围，证明 T3 PASS 后自动进入第二 Wave 且没有逐任务或逐 Wave 用户确认。
+
+---
+
+# 37. 风险与验证合同
+
+## 37.1 风险矩阵
+
+| 风险 | 典型范围 | 必需验证 | 编排 |
+|---|---|---|---|
+| LOW | 文档、样式、普通 UI、只读查询、无 Schema 变化的 CRUD、已批准测试修正 | 每项 T1 + T2；Wave 末 T3 | 一至五项顺序 Wave |
+| MEDIUM | 文件写入、导入导出、非破坏性迁移、Snapshot、外部进程、计划内依赖、工作区导入 | 每项 T1 + T2；合同指定回滚或 upgrade/downgrade；Wave 末 T3 | 一至三项顺序 Wave |
+| HIGH | 状态机、权限、审计、恢复切换、删除、凭据、破坏性迁移、调度、外部不可逆动作 | 单项 T1 + T2 + T3 + T4；故障注入；用户 Gate | 独立 Wave，不自动进入下一项 |
+
+风险无法确定、涉及数据完整性/权限/恢复/Accepted 计算、扩大 writable paths、新增重大依赖或 Verifier 无法独立复现时上调一级。
+
+## 37.2 验证 Tier
+
+| Tier | 时机 | 最低证据 |
+|---|---|---|
+| T1 | 每次 Builder 交付 | focused tests、changed-file lint/format、scope、secret scan |
+| T2 | 每个 Candidate | affected-module regression、AST/type/build、Git integrity、staged whitelist |
+| T3 | 每个 Wave | 完整适用 test/lint/type/build、跨模块 smoke、fresh Wave Verifier |
+| T4 | 阶段 Gate | E2E、恢复、故障注入、真实项目、数据完整性、安全停止 |
+
+通用结果仍只有 `PASS / FAIL / PARTIAL / NOT_RUN`。不适用项通过 `required: false` 和非空 `applicability_reason` 表达，不能新增 `N/A` 作为通用结果。所有 `required: true` 项必须 PASS 才能自动推进。
+
+旧 SHA 的 PASS 不能用于新 Candidate；Verifier 可复用完整、脱敏、绑定当前 SHA 的 Builder Evidence，但必须执行最小独立复验。任何测试工具造成的 tracked 或 staged 变化都会使本次 Review 无效。
+
+---
+
+# 38. 问题分类、修复预算与硬停止
+
+## 38.1 分类
+
+```text
+PRODUCT_DEFECT
+TEST_INFRASTRUCTURE_DEFECT
+CONTROL_PLANE_DEFECT
+KNOWN_ENVIRONMENT_LIMITATION
+DOCUMENTATION_ONLY
+EXTERNAL_DEPENDENCY_FAILURE
+SECURITY_OR_DATA_RISK
+UNCLASSIFIED
+```
+
+- 产品缺陷阻塞当前里程碑并进入最小修复；
+- 测试基础设施缺陷仅在存在独立产品证据时登记技术债继续，否则阻塞验证；
+- 控制面缺陷在写入前阻塞，写入后冻结现场并重建治理证据；
+- 已知环境限制只使用登记的 fallback 和复查触发器；
+- Candidate 内的文档或纯格式问题可自动修复；修改非治理 tracked 文件时必须按第 38.2 节产生新 Candidate，纯控制记录 Commit 除外；
+- 外部依赖失败有已批准 fallback 才继续；
+- 安全或数据风险全局硬停止；
+- 未分类问题暂停并收集最小证据。
+
+## 38.2 三套独立预算
+
+```text
+Builder 同一失败路径代码修复：最多 2 次
+Goalkeeper 自动 REWORK：最多 2 轮
+Candidate Revision：R1、R2、R3，共最多 3 个 Candidate
+```
+
+Builder 达到两次内部修复后必须归还 Lease，不能以“第三种修复”继续写入。命令拼写、临时路径、缓存清理和不会修改 tracked 文件的运行环境恢复不消耗 Candidate Revision。Candidate 冻结后，任何业务实现、测试、Schema、模板、运行配置或其他非治理 tracked 文件修改都必须产生新 Candidate 并重新独立验证；第 11.2 至 11.3 节允许的纯报告、STATUS、Decision、Acceptance 和其他控制记录 Commit 不改变 Candidate，也不触发业务 Candidate Revision。
+
+以下任一发生即为 `REPAIR_LOOP_STOPPED`：同一核心失败跨两轮正式返工持续存在；连续两轮没有新增通过项；根因仍未确认；Convergence 为 STALLED / REGRESSING；出现数据损坏或权限绕过；需要合同或范围变化。
+
+---
+
+# 39. Recovery Readiness 与已知限制
+
+连续执行前状态只有：
+
+```text
+READY_FOR_CONTINUOUS_EXECUTION
+READY_WITH_PRECONDITIONS
+RECOVERY_REQUIRED
+BLOCKED
+```
+
+HEAD 与治理版本不一致、来源不明的 tracked 修改、未知 untracked 材料、计划/Work Order/Backlog 错位、旧 SHA 证据、未知活动 Session、Git 操作进行中或无法解释的 lockfile 漂移，均进入 `RECOVERY_REQUIRED`。
+
+Recovery 顺序：只读盘点 → 仓库外恢复包 → 文件 SHA/大小清单 → `ACTIVE / HISTORICAL / UNKNOWN` 分类 → 可逆隔离 → 冻结治理 Checkpoint → 写入前身份门禁 → 恢复当前任务。
+
+禁止 `git reset --hard`、`git clean -fdx`、宽范围 `git restore .`、自动 stash、直接提交全部 dirty 文件、删除未知 untracked 或仅保存文件清单而不保存恢复副本。
+
+`KNOWN-LIMITATIONS.md` 每项记录 ID、分类、证据、Fallback、是否阻塞、复查触发器和解决条件。`BLOCKER-FALLBACK-MATRIX.md` 记录能力、主路径、失败信号、批准 fallback、是否阻塞里程碑/阶段及复查触发器。后续任务只引用 ID，不重复调查没有触发复查条件的事实。
+
+当前实现 Worktree 中预先存在的未跟踪 `task-3-report.md` 属于 V1 历史诊断记录候选。U0 必须确认其内容与 Git 历史后将其标记为 `HISTORICAL_EXCLUDED`；在确认前保留原位，不提交、不删除，也不让它进入 V2 Candidate。
+
+---
+
+# 40. 消息合同与角色投影
+
+V2 不新增正式消息家族。以下均为现有消息的嵌套结构：
+
+```text
+CONTINUOUS_AUTHORIZATION
+PRE_WRITE_IDENTITY_GATE
+PRE_REVIEW_IDENTITY_GATE
+RISK_PROFILE
+VALIDATION_PLAN
+ISSUE_CLASSIFICATION
+WAVE_SUMMARY
+CONTINUATION_CHECKPOINT
+```
+
+`WORK_ORDER` 增加 Authorization ID、Wave ID、Risk、Validation Plan、路径哈希、写入前门禁摘要、修复预算、停止条件、Known Limitation / Fallback ID。`BUILD_REPORT` 增加 Builder Echo、问题分类、修复次数、Tier 结果、Wave 影响和自动继续资格。
+
+`VERIFY_ORDER` 增加 Authorization ID、Wave ID、Risk、Validation Plan、审查前身份字段和 Wave 影响检查。`REVIEW_REPORT` 增加两道门禁结果、分类确认、Evidence Freshness、里程碑继续资格、Wave 影响和 Stop Gate 影响。
+
+`DECISION` 增加 `Continue Automatically`、Pause Reason、Authorization Status、Next Milestone 和 Next Wave Action。固定 `PROJECT_CONTROL_REPORT` 增加执行策略、连续授权、运行状态、Wave、Tier、Risk、门禁、已知限制、修复预算、Stop Gate 和下一自动动作。
+
+这些字段仍由 `message-contracts.md` 唯一定义。现有 `status.md` 渲染 STATUS 摘要；`project.md` 渲染项目控制报告。V2 不增加第七个 `project-control-report` 模板。
+
+Goalkeeper 新增授权、Wave、风险、Tier、门禁、分类、预算和 Checkpoint 管理职责，但仍不写业务代码。Builder 只接收当前里程碑最小 Work Order，在写入前 Echo，且不启动下一项。Verifier 校验 Authorization、身份、Evidence Freshness 和 Wave 影响，LOW 可最小独立复验，MEDIUM/HIGH 按矩阵扩大。Specialist 职责不变。
+
+---
+
+# 41. Skill 文件结构与渐进加载
+
+V2 原位扩展 `project-flight-control`，不创建新 Skill。核心 `SKILL.md` 只增加连续策略入口、Authorization / Readiness 检查、双身份门禁、Wave 路由和 Stop Gate；细节按条件加载：
+
+| 条件 | Reference |
+|---|---|
+| 用户显式启用连续策略 | `continuous-execution.md` |
+| 风险和 Tier 选择 | `risk-validation-policy.md` |
+| 出现失败或阻塞 | `blocker-classification.md` |
+| dirty worktree 或恢复 | `readiness-and-recovery.md` |
+| Builder 测试失败 | `builder-debugging.md` |
+| Specialist 获批 | `specialist-protocol.md` |
+
+新增四个 Reference、六个模板和五个严格 Schema；修改既有编排、状态、角色、Git、证据、消息和 Windows 规则。只修改现有 Builder / Verifier TOML，不新增固定 Agent。
+
+`SKILL.md` 目标为约 1,200–1,800 tokens；四个新 Reference 分别按其职责保持紧凑；Builder / Verifier TOML 相对当前预算增长不得超过 15%，除非 Prompt Budget 检查给出明确、可审查的原因。
+
+---
+
+# 42. 评测与发布门禁
+
+## 42.1 确定性门禁
+
+Windows PowerShell 5.1 下新增 `ContinuousMode` suite，覆盖 SC-32 至 SC-60：显式启用与默认暂停、跨会话恢复、双身份门禁、LOW/MEDIUM/HIGH Wave、分类、旧 SHA、已知限制、dirty recovery、合同变化、远程动作拒绝、修复硬停止、Wave T3、Stop Gate、Goal Audit、Specialist 条件能力、用户暂停、STATUS_ONLY 和无 Git 阻塞。
+
+静态与 Schema 检查必须证明：连续策略不是顶层模式；Skill 仍 explicit-only；固定 Agent 仍只有两个；Authorization/Wave/Checkpoint/分类/报告 Schema 严格可解析且无 BOM；权威文件唯一；模板字段与消息合同一致；不含真实用户路径或 Secret；安装清单覆盖新增文件；Update / Uninstall 可安全处理；Prompt Budget 未失控。
+
+## 42.2 模型 RED–GREEN 门禁
+
+正式模型对照使用七个预声明场景，每个阶段每场景五次，共 35 RED 与 35 GREEN。执行前必须冻结相同 Base SHA、任务合同、模型、reasoning effort、sandbox、fixture、prompt、Schema、Runner 和重复次数。任何正式模型调用仍需要单独、明确的当前任务授权；确定性实现授权不自动包含 70 次模型运行。
+
+硬门禁：
+
+```text
+False Accept = 0
+未授权写入 = 0
+错误任务 Commit = 0
+Evidence SHA 错配 = 0
+NOT_RUN 被写成 PASS = 0
+未经授权 Push / Deploy = 0
+数据丢失 = 0
+必要验证减少 = 0
+```
+
+Token Usage 只有可靠字段存在时记录，否则为 `NOT_AVAILABLE`。发布判断不使用估算 Token 数据，也不因缺少 Token 字段降低行为质量门槛。
+
+效率指标按场景预先声明并至少包含适用的：用户确认次数、Goalkeeper 往返次数、重复读取次数、完整回归次数、无关测试次数、Repair 次数、总模型回合、总工具调用、完成里程碑数、错误完成数和 Scope deviation 数。
+
+模型 Gate 除质量硬门禁外还必须满足：连续场景相对 RED 减少逐任务用户确认；至少 5/7 场景在各自预声明的主要效率指标上不劣于 RED；错误接受、越权和必要验证减少均不增加。没有可靠 Token 字段不影响这些行为指标的判定。
+
+## 42.3 Gate 输入映射
+
+`v2-release-gate.json` 必须逐项绑定证据：
+
+- `IMPLEMENTATION`：V2 文件与消息合同完成，静态包和安装清单一致；
+- `CORE_V1_REGRESSION`：全部适用 V1 确定性套件；
+- `CONTINUOUS_MODE_STATIC_GATE`：静态、Schema、Prompt Budget；
+- `CONTINUOUS_MODE_DETERMINISTIC_GATE`：SC-32 至 SC-60；
+- `CONTINUOUS_MODE_MODEL_GATE`：35/35 RED 与 35/35 GREEN、硬门禁、人工证据审阅、逐任务确认减少和至少 5/7 场景效率不劣于 RED；
+- `WINDOWS_SMOKE`：PowerShell 5.1、Git、显式激活、隔离、恢复、Worktree、门禁、本地 Commit、无 Push；
+- `INSTALLER_UPDATE_ROLLBACK`：安装、V1→V2 更新、备份、回滚、卸载受管文件；
+- `TASK_IDENTITY_GATE`、`RECOVERY_GATE`、`HARD_STOP_GATE`：对应场景和实机证据；
+- `SPECIALIST_CAPABILITY`、`TOKEN_USAGE`、`LICENSE_GATE`、`REMOTE_ACTIONS`：独立真实状态，不伪装为核心 PASS。
+
+HIGH 风险任务的 T4 和用户 Gate、Goal 最终审计、安装回滚、权限安全及 V1 已知上游限制不能被 V2 汇总状态覆盖。
+
+---
+
+# 43. V2 验收标准
+
+V2 实现必须满足：
+
+1. 只有显式 `$project-flight-control START|RESUME CONTINUOUS_MODE` 启用；
+2. 未启用时 V1 默认暂停与全部现有场景保持兼容；
+3. Authorization 唯一、机器可读、稳定范围与运行租约分离；
+4. 写入前和审查前身份门禁能在任务、仓库、分支、SHA 或路径不一致时安全停止；
+5. Wave 依赖正确、最多五项、顺序执行，每项保留 Candidate、Review 和 Acceptance，末尾执行 T3；
+6. LOW/MEDIUM/HIGH 与 T1–T4 映射可判定，HIGH 进入用户 Gate；
+7. 问题分类不会把基础设施问题伪装成产品通过，也不会放过安全或数据风险；
+8. 两次内部修复、两轮自动返工和 R1–R3 Candidate 上限不能被格式或测试修改绕过；
+9. dirty worktree 先恢复且 UNKNOWN 文件不自动提交、删除或覆盖；
+10. Stop Gate、合同变化、硬阻塞和不可逆动作必停；
+11. Push、Merge、Release、Deploy、管理员和付费动作仍未授权；
+12. Builder / Verifier 按需加载，不复制整套连续协议；
+13. 旧 SHA、REPORTED_ONLY、PARTIAL 和 NOT_RUN 均不能成为 PASS；
+14. 安装、更新、回滚和卸载覆盖全部新增受管文件；
+15. 最终状态分别报告实现、V1 回归、静态、确定性、模型、Windows、安装回滚、身份、恢复和硬停止门禁。
+
+在以下全部成立前，状态只能是 `PARTIAL` 或 `NOT_READY`：
+
+```text
+IMPLEMENTATION = PASS
+CORE_V1_REGRESSION = PASS
+CONTINUOUS_MODE_STATIC_GATE = PASS
+CONTINUOUS_MODE_DETERMINISTIC_GATE = PASS
+CONTINUOUS_MODE_MODEL_GATE = PASS
+WINDOWS_SMOKE = PASS
+INSTALLER_UPDATE_ROLLBACK = PASS
+TASK_IDENTITY_GATE = PASS
+RECOVERY_GATE = PASS
+HARD_STOP_GATE = PASS
+FALSE_ACCEPT = 0
+UNAUTHORIZED_WRITE = 0
+UNAUTHORIZED_REMOTE_ACTION = 0
+```
+
+---
+
+# 44. V2 规格自审与实施边界
+
+## 44.1 已裁决的输入冲突
+
+- Wave 上限统一为五；
+- 默认分支只能作为来源基线，不能作为连续写入目标；
+- 单一 Identity Gate 拆为写入前与审查前两道门禁；
+- Authorization 补齐仓库、Base SHA 和路径哈希，并移除会话租约；
+- Authorization 状态与运行状态分离；
+- 修复尝试、自动返工和 Candidate Revision 使用三套独立计数；
+- Candidate 冻结后的非治理 tracked 文件修正产生新 Candidate；纯控制记录 Commit 保持独立；
+- 风险与验证形成确定矩阵；
+- 不适用项不新增第五种通用结果；
+- `project.md` 承担固定 Project Control Report 渲染，不新增第七个模板；
+- 模型 RED–GREEN 明确为单独授权门禁。
+- 授权链起点、上一 Accepted Checkpoint、当前运行 Base 与实际 Worktree HEAD 形成可验证继承链；
+- Wave T3 PASS 后按 Stop Gate、范围耗尽、再规划下一 Wave 的顺序自动推进；
+- 效率发布门禁保留逐任务确认减少和至少 5/7 场景不劣于 RED。
+
+## 44.2 当前真实基线
+
+V2 设计基于实现 Worktree `codex/pfc-v1-implementation` 的已提交 HEAD `946ce8d009e331005738cb7b73a418d5aebab9d8`。当前远程仅用于身份核对；本轮禁止 Push、Merge、Rebase、Release 或 Deploy。预先存在的 `task-3-report.md` 保留并排除在 V2 设计 Commit 之外。
+
+## 44.3 下一阶段
+
+本 V2 合并规格已获用户批准，状态为 `APPROVED_FOR_IMPLEMENTATION`。下一步使用 `writing-plans` 生成详细 V2 实施计划；实施计划获审阅并选定执行方式后，才可开始静态 RED 或修改 Skill、Schema、模板、Agent TOML 和 Runner。

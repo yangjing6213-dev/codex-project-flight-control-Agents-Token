@@ -1,0 +1,73 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "pfc.issue-classification.v1"
+      ]
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "PRODUCT_DEFECT",
+        "TEST_INFRASTRUCTURE_DEFECT",
+        "CONTROL_PLANE_DEFECT",
+        "KNOWN_ENVIRONMENT_LIMITATION",
+        "DOCUMENTATION_ONLY",
+        "EXTERNAL_DEPENDENCY_FAILURE",
+        "SECURITY_OR_DATA_RISK",
+        "UNCLASSIFIED"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      }
+    },
+    "affected_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+      }
+    },
+    "blocking_scope": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "MILESTONE",
+        "WAVE",
+        "GLOBAL"
+      ]
+    },
+    "fallback_reference": {
+      "type": "string",
+      "pattern": "(?-i:^(?:NONE|[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)\\z)"
+    },
+    "next_action": {
+      "type": "string",
+      "enum": [
+        "REPAIR",
+        "BLOCK_VERIFICATION",
+        "FREEZE_CONTROL",
+        "USE_APPROVED_FALLBACK",
+        "CONTINUE",
+        "STOP",
+        "PAUSE_COLLECT_EVIDENCE"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "classification",
+    "evidence",
+    "affected_scope",
+    "blocking_scope",
+    "fallback_reference",
+    "next_action"
+  ],
+  "additionalProperties": false
+}

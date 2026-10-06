@@ -17,3 +17,11 @@ Use Windows PowerShell 5.1 syntax and cmdlets that parse under that host. Detect
 Evaluation and runtime actions use the least sandbox and approval scope that completes the local deterministic task. Do not request or silently widen approvals. Never use a hard-coded drive path, network or remote operation, model execution, install, global setting, or production action as a substitute for local evidence.
 
 All PowerShell scripts must parse under 5.1. Use `-LiteralPath` for resolved paths, avoid shell-specific quoting assumptions, and preserve non-ASCII text through explicit UTF-8 reads and writes. A path, encoding, or executable mismatch is an environment limitation and must be recorded with its actual status.
+
+## Conditional Continuous checks
+
+The Windows runtime remains unchanged under the Continuous policy. Apply the canonical identity algorithms rather than ad hoc path comparison, and resolve both source and recovery-package destinations before preserving data; runtime compatibility never bypasses readiness or lease checks.
+
+Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).
+
+Only when explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed: [readiness-and-recovery.md](readiness-and-recovery.md).

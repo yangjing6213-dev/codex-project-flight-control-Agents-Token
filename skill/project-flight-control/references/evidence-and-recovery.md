@@ -1,6 +1,6 @@
 # Evidence, convergence, and recovery
 
-This is the single authority for Evidence Records, convergence snapshots, and interrupted-run recovery. Message field names remain defined by `message-contracts.md`; this reference defines when facts are valid and how they are resumed.
+This is the single authority for Evidence Records, convergence snapshots, lease fencing and V1 interrupted-run recovery. Message field names remain defined by `message-contracts.md`; this reference defines when facts are valid and how they are resumed.
 
 ## Compact Evidence Record
 
@@ -55,7 +55,11 @@ Recovery reads, in order, Git state, canonical project sources, the latest STATU
 
 Every start or resume creates a new `Control Run ID` and `Lease Epoch`. New work orders and reports carry both. Reports from an old epoch, an old Candidate, a replaced Specialist Order, or a late thread are rejected as `STALE_REPORT_REJECTED`; they cannot advance state or establish PASS.
 
-Recovery actions are deterministic:
+Recovery actions are deterministic. In explicit Continuous policy, apply its additional readiness, inventory and expected-start gates before the V1 recovery dispatch below; these branches do not waive those gates.
+
+Only when explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed: [readiness-and-recovery.md](readiness-and-recovery.md).
+
+Only when explicit Continuous policy is active and issue classification is needed: [blocker-classification.md](blocker-classification.md).
 
 * `ACTIVE` with no Candidate: create a new Builder from the valid WORK_ORDER, Base SHA, current worktree facts, latest BUILD_REPORT, required verification, and next authorized action.
 * Candidate present without a valid Review: create a new Verifier for the same frozen Candidate SHA using VERIFY_ORDER, fixed diff, valid Evidence, and risks.

@@ -4,7 +4,7 @@ Mode: Long-Horizon. Status: PARTIAL / BLOCKED.
 
 The original goal, task contract, acceptance criteria, task states, evidence, rulings, risks, and final acceptance are maintained in the sole verified-state record:
 
-[Execution ledger](../../../.superpowers/sdd/2026-09-03-project-flight-control-v1-implementation-plan/progress.md)
+Local-only execution ledger: `.superpowers/sdd/2026-09-03-project-flight-control-v1-implementation-plan/progress.md` (not included in the public repository).
 
 The ledger is local and ignored. The approved [implementation plan](../../superpowers/plans/2026-09-03-project-flight-control-v1-implementation-plan.md) and [design](../../project-flight-control-design.md) are immutable inputs, not execution status. Resume from the ledger plus Git history. If the local ledger is unavailable, reconstruct only from verifiable repository evidence and report gaps explicitly.
 

@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "version": "0.2.0-dev.0",
+  "status": "PARTIAL",
+  "release_readiness": "NOT_READY",
+  "tested_candidate_sha": "74c8691129303460d7915085cc056574b893b0a1",
+  "tested_candidate_scope": "historical Task 11 reviewed Candidate only; not the current uncommitted Task 12 worktree",
+  "product_source_candidate_sha": "4f5a066ab9c16575a5da5e133cf31349ed00dc35",
+  "frozen_control_sha256": "d9214dff4149a8f7c993cc775609ef8ebf351c86703900403febe45d4b7de6d6",
+  "task11_frozen_control_sha256": "47814f3e9f07bea6378913daf19631499bbbc9acb3f4d0b1c51f02fd0b963a42",
+  "current_task12": {
+    "as_of": "2026-10-06",
+    "status": "PARTIAL",
+    "worktree_scope": "Current source bytes are bound by the final local-check fingerprint inventory; base commit is not a complete snapshot of this update.",
+    "runner_sha256": "f886cf6b7654c097d70ca769b45d159d3a868d808a80924f46355cc9f7b8a5ac",
+    "run_evals_sha256": "955be905893b5070d2a13dd389981659a973f155183703cac9d392d1d75a96ee",
+    "formal_red": {
+      "attempted": 2,
+      "valid": 0,
+      "invalid": 2,
+      "remaining_valid_required": 35
+    },
+    "green": "NOT_RUN",
+    "windows_smoke": "NOT_RUN",
+    "latest_diagnostic_error_category": "CAPTURE_STOPPED_ON_OPTIONAL_POWERSHELL_SNAPSHOT_WARNING",
+    "network_root_cause": "Latest diagnostic does not establish network failure; prior network issue not fully verified as resolved.",
+    "role_execution": "Runner starts Builder and Verifier separately; Codex built-in agents disabled",
+    "lifecycle_source": "Runner records; not native Codex child events",
+    "maximum_role_tasks_per_attempt": 13,
+    "maximum_goalkeeper_resumptions_per_attempt": 13,
+    "maximum_codex_process_invocations_per_attempt": 27,
+    "execution": "serial; no retry or replacement",
+    "cumulative_usage_hard_cap_available": false,
+    "authorization": "new explicit live-run authorization required; stopped authorizations cannot be reused",
+    "local_checks": "26/26 local check processes PASS with exit 0 in Windows PowerShell 5.1; source fingerprint inventory unchanged; synthetic model transport only; not real Windows isolation or model acceptance",
+    "local_repair_receipt_sha256": "bbee78c4e4f0b22a16bc1327ba951ec959406bafdedae9493934c57455ca47e6",
+    "evidence_source": "docs/exec-plans/active/project-flight-control-v2-continuous-mode.md",
+    "latest_diagnostic_root_cause": "Strict local stderr keyword check killed the process before stdout events; optional shell_snapshot disabled only in a prepared launch copy; live retry NOT_RUN.",
+    "base_before_current_checkpoint": "7ad957e4de5a9822e0647bf56b07650788db4d83",
+    "independent_fix_review": {
+      "scope": "Current local Runner, sample guard and directly related synthetic tests; not stable release acceptance",
+      "SPEC_COMPLIANCE": "PASS",
+      "QUALITY": "PASS",
+      "critical": 0,
+      "important": 0,
+      "reviewer": "independent capture_warning_audit",
+      "code_hashes": {
+        "evals/lib/CodexRunner.psm1": "f886cf6b7654c097d70ca769b45d159d3a868d808a80924f46355cc9f7b8a5ac",
+        "evals/run-evals.ps1": "955be905893b5070d2a13dd389981659a973f155183703cac9d392d1d75a96ee",
+        "evals/expected/continuous-mode-model/frozen-control.json": "d9214dff4149a8f7c993cc775609ef8ebf351c86703900403febe45d4b7de6d6",
+        "evals/tests/RunnerOwnedLifecycle.Tests.ps1": "3e11a83d15eed92968fc85501c479aacf63ab2055ee4d708322667a9c66b61e9",
+        "evals/tests/ContinuousModeModelContract.Tests.ps1": "717b16cf0c72619f6446c1f001bb3e8ab5c4d7f05d857697230c8e7ac590d99f"
+      },
+      "model_calls": 0
+    }
+  },
+  "deterministic_evidence": {
+    "candidate_sha": "4f5a066ab9c16575a5da5e133cf31349ed00dc35",
+    "scope": "historical complete 23-child batch for this Candidate only; not a full run on the current evaluation-runner Candidate",
+    "children": 23,
+    "child_exit_zero": 23,
+    "normalized_top_level_outcomes": 812,
+    "continuous_scenarios": "SC-32..SC-60 (29/29)",
+    "fake_model_calls": 62,
+    "real_process_calls": 0,
+    "real_resolutions": 0,
+    "formal_model_samples": 0,
+    "original_wrapper": {
+      "exit_code": 1,
+      "aggregate_path": ".superpowers/sdd/2026-09-20-project-flight-control-v2-continuous-mode-implementation-plan/task-11-evidence/20260923T042249Z-ede5599d15b045e29be9cf32624b8c8c/aggregate.json",
+      "aggregate_sha256": "b491a42874f793896382e2353e4c8212292b331ea2e0dd71c95bd9f62ba8ae2b",
+      "recorded_pass": 22,
+      "recorded_invalid_output": 1,
+      "invalid_output_child": "StrictSchema",
+      "reason": "The wrapper assumed JSON-only stdout; StrictSchema emitted seven PASS prefix lines followed by its PASS JSON result. Original metadata is retained unchanged."
+    },
+    "normalized_reconciliation": {
+      "status": "PASS",
+      "path": ".superpowers/sdd/2026-09-20-project-flight-control-v2-continuous-mode-implementation-plan/task-11-normalized-evidence.json",
+      "sha256": "78fe71a80259e7127fa89562f8aaafa752b1ca395f79702de8ff1a639515fea2"
+    },
+    "prior_candidate_affected": {
+      "candidate_sha": "69ac5de5df5c2a94bd93197251ec38f42fb44f40",
+      "scope": "historical affected verification for the prior evaluation-runner Candidate; not a full or affected suite rerun at 74c8691",
+      "product_source_candidate_sha": "4f5a066ab9c16575a5da5e133cf31349ed00dc35",
+      "product_inputs": 41,
+      "product_inputs_sha256": "cc4c299c63090b7d89a5d788b17089c0a31852e3d54825df0b61ac3869fb1399",
+      "evidence_index_path": ".superpowers/sdd/2026-09-20-project-flight-control-v2-continuous-mode-implementation-plan/task-11-final-fix-final-evidence.json",
+      "evidence_index_sha256": "af5cef7e3a4665c10fe5b3ae838e918d3ac30d7eada9247ec4f14a2a75af220c",
+      "continuous_mode": "301/301 PASS, exit 0; separate focused predecessor/history 8/8 PASS, exit 0",
+      "model_contract": "Full v3 run: 84 PASS / 1 FAIL of 85, exit 1; the original failed artifact check plus tripwire and accounting separately passed 3/3, exit 0 after a test-only correction. No single 85/85 run is claimed.",
+      "other_affected_suites": "StaticPackage 41/41, ContinuousContracts 10/10, BuilderEfficiency 6/6, RunnerRevision3 1/1, Revision4Isolation 31/31; five separate child exits 0, 89 PASS total",
+      "real_process_calls": 0,
+      "real_resolutions": 0,
+      "formal_model_samples": 0,
+      "note": "The v3 model-contract accounting is 63 fake calls; the later focused correction made zero fake calls. This is not a cumulative wave count."
+    },
+    "latest_trace_fix": {
+      "candidate_sha": "74c8691129303460d7915085cc056574b893b0a1",
+      "changed_paths": 5,
+      "evidence_index_path": ".superpowers/sdd/2026-09-20-project-flight-control-v2-continuous-mode-implementation-plan/task-11-trace-fix-evidence.json",
+      "evidence_index_sha256": "df81f85a2442024fe48577d4da7bb19d35dd00aaeec65fa738445d015f056c4c",
+      "focused_results": "16/16 PASS, child exit 0; this is not a complete CM or seven-suite rerun",
+      "fake_calls": 36,
+      "real_process_calls": 0,
+      "real_resolutions": 0,
+      "formal_model_samples": 0,
+      "cm05_safe_stop": "Five of the 35 serial fake attempts collected valid no-dispatch CM-05 samples after complete supported read-only stream and unchanged frozen physical evidence; independent correctness remains NOT_RUN.",
+      "trace_limit": "Per-child fresh receipt and terminal lifecycle are required; unknown or incomplete transport preserves the fixture and stops without retry. Actual installed native exec completeness remains NOT_RUN."
+    }
+  },
+  "model_authorization_boundary": {
+    "scope": "historical Task 11 native-child planning only; current Runner-managed role controls and actual counts are in current_task12",
+    "status": "NOT_AUTHORIZED",
+    "top_level_attempts_per_phase": 35,
+    "planned_native_children_per_attempt": 13,
+    "planned_native_children_per_phase": 455,
+    "maximum_concurrent_children": 2,
+    "maximum_candidate_revisions": 3,
+    "maximum_auto_rework_rounds": 2,
+    "maximum_builder_repairs_per_failure_path": 2,
+    "maximum_milestones": 2,
+    "recursive_delegation": false,
+    "replacement_attempts": false,
+    "enforcement": "instruction_and_trace_audit",
+    "hard_total_cap_available": false,
+    "trace_contract": "codex_exec_thread_events_with_item_lifecycle",
+    "safe_no_dispatch_collection": "CM05_frozen_identity_reads_and_unchanged_physical_evidence_only",
+    "formal_model_samples_consumed": 0,
+    "actual_native_child_calls": 0,
+    "detail": "35 is the serial top-level attempt limit for one phase, not the total model-context or cost limit. Native Builder/Verifier/Wave Verifier contexts, their additional use and the lack of a cumulative hard cap require new explicit user acknowledgement; an old 35-total-call authorization is invalid."
+  },
+  "whole_branch_review": {
+    "scope": "historical Task 11 reviewed implementation; later uncommitted Task 12 changes require their own review",
+    "specification": "PASS",
+    "specification_detail": "Scoped R3 approved the five-path trace fix and closed SPEC-R2-I1/I2 with 0 Critical, 0 Important and 0 Minor findings; this is implementation-scope review, not release approval.",
+    "quality": "PASS",
+    "quality_detail": "Scoped R3 closed Q-R2-I1, accepted the bounded CM-05 validity route, and reported 0 Critical, 0 Important and 0 Minor findings; independent pure trace probe 4/4 PASS, exit 0.",
+    "ponytail": "PASS",
+    "ponytail_detail": "Scoped R3 found no speculative dependency, generic telemetry layer or second authority source."
+  },
+  "gates": {
+    "IMPLEMENTATION": {
+      "status": "PASS",
+      "scope": "Tasks 1-11 local deterministic implementation and independent implementation review; not release or live-runtime acceptance",
+      "detail": "Tasks 1-10 task reviews and Task 11 whole-branch plus scoped R3 reviews accepted the bounded fixes through Candidate 74c8691. SPEC, QUALITY and Ponytail R3 are PASS with no unresolved Critical or Important implementation finding. Historical full-batch and current focused evidence retain their separate Candidate scope.",
+      "evidence": [
+        "accepted Task 1-10 commits and reviews",
+        "deterministic_evidence.prior_candidate_affected",
+        "deterministic_evidence.latest_trace_fix",
+        "whole_branch_review"
+      ]
+    },
+    "CORE_V1_REGRESSION": {
+      "status": "PASS",
+      "scope": "Local deterministic evidence only; not live model or Windows isolation acceptance",
+      "detail": "All 18 V1 suites plus schema/encoding checks passed in the current 26-process local batch. Historical results remain preserved separately.",
+      "evidence": [
+        "current_deterministic_evidence"
+      ]
+    },
+    "CONTINUOUS_MODE_STATIC_GATE": {
+      "status": "PASS",
+      "scope": "Local deterministic evidence only; not live model or Windows isolation acceptance",
+      "detail": "Current StaticPackage 41/41 and ContinuousContracts 10/10 passed; frozen controls and fixtures passed without changing tasks, metrics or pass rules.",
+      "evidence": [
+        "current_deterministic_evidence"
+      ]
+    },
+    "CONTINUOUS_MODE_DETERMINISTIC_GATE": {
+      "status": "PASS",
+      "scope": "Local deterministic evidence only; not live model or Windows isolation acceptance",
+      "detail": "Current ContinuousMode 302/302 and ContinuousModeModelContract 106/106 passed in the final unchanged source snapshot, with synthetic transport only.",
+      "evidence": [
+        "current_deterministic_evidence"
+      ]
+    },
+    "CONTINUOUS_MODE_MODEL_GATE": {
+      "status": "PARTIAL",
+      "detail": "Formal RED: 2 attempted, 0 valid, 2 invalid; 35 valid samples still required. GREEN is NOT_RUN. Current Runner-managed roles and Goalkeeper resumptions execute serially without retry under current_task12 limits. The latest diagnostic was prematurely stopped by local warning detection; the prepared optional-feature fix has no new live result. Stopped authorizations cannot be reused; further live runs require separate explicit authorization. Invalid samples and diagnostics are not valid formal evidence.",
+      "evidence": [
+        "current_task12.evidence_source"
+      ]
+    },
+    "WINDOWS_SMOKE": {
+      "status": "NOT_RUN",
+      "detail": "The real disposable Windows smoke was not executed; PowerShell 5.1 deterministic checks do not establish runtime isolation or recovery.",
+      "evidence": []
+    },
+    "INSTALLER_UPDATE_ROLLBACK": {
+      "status": "PASS",
+      "scope": "disposable local fixtures only",
+      "detail": "Installer 16/16 and Doctor 41/41 top-level results passed, including V1-to-V2 update, backup, rollback and managed-file uninstall fixtures. The planned Windows smoke uses a disposable temporary home/state fixture; installation into the user's actual profile is not a V2 acceptance requirement.",
+      "evidence": [
+        "deterministic_evidence"
+      ]
+    },
+    "TASK_IDENTITY_GATE": {
+      "status": "PARTIAL",
+      "detail": "Deterministic identity scenarios passed; authorized real-machine smoke evidence is absent.",
+      "evidence": [
+        "deterministic_evidence"
+      ]
+    },
+    "RECOVERY_GATE": {
+      "status": "PARTIAL",
+      "detail": "Deterministic recovery scenarios passed; authorized real-machine recovery evidence is absent.",
+      "evidence": [
+        "deterministic_evidence"
+      ]
+    },
+    "HARD_STOP_GATE": {
+      "status": "PARTIAL",
+      "detail": "Deterministic stop scenarios passed; authorized real-machine stop evidence is absent.",
+      "evidence": [
+        "deterministic_evidence"
+      ]
+    },
+    "SPECIALIST_CAPABILITY": {
+      "status": "NOT_RUN",
+      "detail": "UNKNOWN at runtime; SpecialistSmokeUnit uses fixture adapters and does not establish availability.",
+      "evidence": []
+    },
+    "TOKEN_USAGE": {
+      "status": "NOT_AVAILABLE",
+      "detail": "No reliable total usage across Goalkeeper and Runner-managed role contexts. Top-level terminal usage cannot be called scenario-total Token Usage or a saving claim.",
+      "evidence": []
+    },
+    "LICENSE_GATE": {
+      "status": "PASS",
+      "scope": "existing local MIT license and unchanged V2 assets/dependency inventory",
+      "detail": "LICENSE SHA-256 a4d4870a9a4f70332ba806f48970ea5d1b26b0f2fce965c3ff5c490785f5a15b; the V2 diff adds no changes to LICENSE, existing images or common dependency manifests. The recorded user delegation and public-source approval remain the license-selection basis; this is not a new legal-rights determination.",
+      "evidence": [
+        "LICENSE",
+        "docs/verification/v1-verification-report.md"
+      ]
+    },
+    "REMOTE_ACTIONS": {
+      "status": "SOURCE_UPDATE_AUTHORIZED",
+      "detail": "The current explicit human approval permits a normal main-only source/README push using GitHub noreply identity. Keep development history local; do not change Git/account settings, force, merge, rebase, tag, release, deploy or run new model evaluation.",
+      "evidence": [
+        "docs/exec-plans/active/project-flight-control-v2-continuous-mode.md"
+      ]
+    }
+  },
+  "CORE_RELEASE_GATE": {
+    "status": "BLOCKED",
+    "detail": "The formal model gate, Windows smoke, runtime identity/recovery/hard-stop evidence and PFC-UPSTREAM-001 remain open. Implementation review PASS and the separately scoped old full batch, prior affected checks and latest 16 focused checks do not establish release acceptance."
+  },
+  "upstream_blocker": {
+    "id": "PFC-UPSTREAM-001",
+    "status": "UNRESOLVED",
+    "detail": "Native Windows Codex deny-read permission enforcement has not been verified; do not use the current profile for confidential-read isolation.",
+    "historical_evidence": "docs/verification/v1-release-gate.json"
+  },
+  "next_gate": "TASK12_PARTIAL; local deterministic verification and scoped independent review are complete. Ordinary source and README commits/pushes are authorized by the current user request. A new explicitly bounded diagnostic connection run is required before further live validation. Formal RED/GREEN, Windows smoke and a stable release remain unapproved and unverified.",
+  "evidence_policy": {
+    "raw_logs_in_repository": false,
+    "credentials_in_repository": false,
+    "absolute_user_paths_in_repository": false,
+    "protected_historical_report_staged": false
+  },
+  "publication_scope": "Current source and documentation only, published as one new commit on main using the GitHub noreply identity. Earlier development commits and raw evidence remain local; no development-history branch is published. A public clone alone cannot reproduce the frozen formal evaluation, which requires retained local version history. Stable V2 remains NOT_READY; no new model evaluation is authorized.",
+  "current_deterministic_evidence": {
+    "status": "PASS",
+    "check_processes": 26,
+    "model_calls": 0,
+    "formal_samples": 0,
+    "summary_sha256": "bbee78c4e4f0b22a16bc1327ba951ec959406bafdedae9493934c57455ca47e6",
+    "checks": [
+      {
+        "name": "StrictSchema",
+        "status": "PASS",
+        "reported_outcomes": 1
+      },
+      {
+        "name": "SchemaEncoding",
+        "status": "PASS",
+        "reported_outcomes": 1
+      },
+      {
+        "name": "RunnerTerminal",
+        "status": "PASS",
+        "reported_outcomes": 9
+      },
+      {
+        "name": "RunnerOwnedLifecycle",
+        "status": "PASS",
+        "reported_outcomes": 60
+      },
+      {
+        "name": "RunnerRoleAuthorization",
+        "status": "PASS",
+        "reported_outcomes": 1
+      },
+      {
+        "name": "Bootstrap",
+        "status": "PASS",
+        "reported_outcomes": 17
+      },
+      {
+        "name": "StaticPackage",
+        "status": "PASS",
+        "reported_outcomes": 41
+      },
+      {
+        "name": "Harness",
+        "status": "PASS",
+        "reported_outcomes": 54
+      },
+      {
+        "name": "BuilderEfficiency",
+        "status": "PASS",
+        "reported_outcomes": 6
+      },
+      {
+        "name": "Revision4Isolation",
+        "status": "PASS",
+        "reported_outcomes": 32
+      },
+      {
+        "name": "RunnerRevision3",
+        "status": "PASS",
+        "reported_outcomes": 1
+      },
+      {
+        "name": "PermissionProbeFileHandshake",
+        "status": "PASS",
+        "reported_outcomes": 1
+      },
+      {
+        "name": "PermissionProbeExecutionPolicy",
+        "status": "PASS",
+        "reported_outcomes": 1
+      },
+      {
+        "name": "BuilderProfile",
+        "status": "PASS",
+        "reported_outcomes": 36
+      },
+      {
+        "name": "VerifierProfile",
+        "status": "PASS",
+        "reported_outcomes": 44
+      },
+      {
+        "name": "MessageContracts",
+        "status": "PASS",
+        "reported_outcomes": 3
+      },
+      {
+        "name": "GovernanceReferences",
+        "status": "PASS",
+        "reported_outcomes": 12
+      },
+      {
+        "name": "EvidenceRecovery",
+        "status": "PASS",
+        "reported_outcomes": 63
+      },
+      {
+        "name": "SkillEntry",
+        "status": "PASS",
+        "reported_outcomes": 11
+      },
+      {
+        "name": "SpecialistProtocol",
+        "status": "PASS",
+        "reported_outcomes": 38
+      },
+      {
+        "name": "Installer",
+        "status": "PASS",
+        "reported_outcomes": 16
+      },
+      {
+        "name": "Doctor",
+        "status": "PASS",
+        "reported_outcomes": 41
+      },
+      {
+        "name": "SpecialistSmokeUnit",
+        "status": "PASS",
+        "reported_outcomes": 20
+      },
+      {
+        "name": "ContinuousContracts",
+        "status": "PASS",
+        "reported_outcomes": 10
+      },
+      {
+        "name": "ContinuousMode",
+        "status": "PASS",
+        "reported_outcomes": 302
+      },
+      {
+        "name": "ContinuousModeModelContract",
+        "status": "PASS",
+        "reported_outcomes": 106
+      }
+    ],
+    "model_contract_accounting": [
+      {
+        "ScenarioId": "CM-contract.invocation-accounting",
+        "Status": "PASS",
+        "Message": "real_process_calls=0; real_resolutions=0; fake_calls=268; formal_samples=0"
+      }
+    ]
+  }
+}

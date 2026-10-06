@@ -1,4 +1,11 @@
 # REVIEW_REPORT
+Pre-write Identity Gate: NOT_APPLICABLE
+Pre-review Identity Gate: NOT_APPLICABLE
+Classification Confirmation: NOT_APPLICABLE
+Evidence Freshness: NOT_APPLICABLE
+Milestone Continuation Eligibility: NOT_APPLICABLE
+Wave Impact: NOT_APPLICABLE
+Stop Gate Impact: NOT_APPLICABLE
 Control Run ID: UNKNOWN
 Lease Epoch: UNKNOWN
 Goal ID: UNKNOWN

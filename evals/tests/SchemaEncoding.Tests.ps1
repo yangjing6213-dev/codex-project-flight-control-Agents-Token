@@ -106,7 +106,37 @@ try {
         Assert-SchemaEncoding $thrown 'preflight failure did not stop Runner'
     }
     Assert-SchemaEncoding ($script:processCalls -eq 0) 'schema preflight failure started a child process'
-    'SCHEMA_ENCODING_TESTS=7/7 PASS'
+    # V2 schemas and the exact six templates must all be strict UTF-8 without BOM.
+    foreach ($name in @('continuous-authorization','wave-plan','continuation-checkpoint','issue-classification','wave-report')) {
+        $path = Join-Path $repoRoot ('evals/schemas/' + $name + '.schema.json')
+        Assert-SchemaEncoding (Test-Path -LiteralPath $path) ('V2 schema missing: ' + $name)
+        Test-NoBomJson -Path $path
+    }
+    foreach ($name in @('continuous-authorization.yaml','wave-plan.yaml','known-limitations.md','blocker-fallback-matrix.md','continuation-checkpoint.md','wave-report.md')) {
+        $path = Join-Path $repoRoot ('skill/project-flight-control/assets/templates/' + $name)
+        Assert-SchemaEncoding (Test-Path -LiteralPath $path) ('V2 template missing: ' + $name)
+        $bytes = Get-SchemaBytes -Path $path
+        Assert-SchemaEncoding (-not ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) ('V2 template BOM: ' + $name)
+        $null = (New-Object System.Text.UTF8Encoding -ArgumentList @($false,$true)).GetString($bytes)
+    }
+    $modifiedTextPaths = @(
+        'skill/project-flight-control/references/message-contracts.md',
+        'skill/project-flight-control/assets/templates/project.md',
+        'skill/project-flight-control/assets/templates/status.md',
+        'skill/project-flight-control/assets/templates/work-order.md',
+        'skill/project-flight-control/assets/templates/build-report.md',
+        'skill/project-flight-control/assets/templates/verify-order.md',
+        'skill/project-flight-control/assets/templates/review-report.md',
+        'skill/project-flight-control/assets/templates/decisions.md',
+        'evals/tests/StrictSchema.Tests.ps1','evals/tests/SchemaEncoding.Tests.ps1',
+        'evals/lib/StaticChecks.psm1','evals/expected/static-package.json'
+    )
+    foreach ($relative in $modifiedTextPaths) {
+        $bytes = Get-SchemaBytes -Path (Join-Path $repoRoot $relative)
+        Assert-SchemaEncoding (-not ($bytes.Length -ge 3 -and $bytes[0] -eq 239 -and $bytes[1] -eq 187 -and $bytes[2] -eq 191)) ('V2 modified file BOM: ' + $relative)
+        $null = (New-Object System.Text.UTF8Encoding -ArgumentList @($false,$true)).GetString($bytes)
+    }
+    'SCHEMA_ENCODING_TESTS=7/7 and V2 assets PASS'
 } finally {
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
 }

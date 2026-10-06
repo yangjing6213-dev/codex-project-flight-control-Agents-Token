@@ -12,7 +12,7 @@ Goalkeeper records one Milestone Contract with scope, non-goals, constraints, ac
 
 ## Builder lease
 
-After the milestone is `ACTIVE`, Goalkeeper grants a single Builder lease on the milestone worktree. Builder starts from the locked WORK_ORDER and Base SHA, performs the minimum implementation and targeted checks, and returns a BUILD_REPORT. Goalkeeper retains the lease boundary and persists the report; no second writer operates in that worktree concurrently.
+In the V1 default flow, after the milestone is `ACTIVE`, Goalkeeper grants a single Builder lease on the milestone worktree. Builder starts from the locked WORK_ORDER and Base SHA, performs the minimum implementation and targeted checks, and returns a BUILD_REPORT. Goalkeeper retains the lease boundary and persists the report; no second writer operates in that worktree concurrently.
 
 ## Candidate freeze and Verifier order
 
@@ -28,7 +28,15 @@ Goalkeeper persists the Accepted Checkpoint SHA only after Verifier PASS and evi
 
 ## Optional continuous mode
 
+The following paragraph records the V1 optional continuous guard. For explicit V2 policy, the conditionally linked references own Authorization, identity gates, sequential Waves, Specialist continuation eligibility and hard stops; use their full gate in place of this optional guard. The default V1 pause above is unchanged.
+
 `CONTINUOUS_MODE` is allowed only when pre-approved and every gate remains true: the current milestone is ACCEPTED, audits and required checks PASS, the next milestone is already approved, scope and route are unchanged, no decision or high-risk action is pending, no Specialist is active, and any acceptance-necessary Specialist is neither `UNRESOLVED` nor `UNAVAILABLE`. A non-necessary consultation may remain unresolved without blocking unrelated proven work. Any failed condition pauses immediately; Goalkeeper does not silently resume it.
+
+Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).
+
+Only when explicit Continuous policy is active and risk or validation selection is needed: [risk-validation-policy.md](risk-validation-policy.md).
+
+Only when explicit Continuous policy is active and issue classification is needed: [blocker-classification.md](blocker-classification.md).
 
 ## Final Goal audit
 

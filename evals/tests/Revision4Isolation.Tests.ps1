@@ -49,7 +49,7 @@ try {
     } finally { if(Test-Path $fixtureRoot){Remove-Item -LiteralPath $fixtureRoot -Recurse -Force}; if(Test-Path $evidenceRoot){Remove-Item -LiteralPath $evidenceRoot -Recurse -Force} }
     $profileRoot=Join-Path ([IO.Path]::GetTempPath()) ('pfc-r4-profile-' + [guid]::NewGuid().ToString('N'))
     try {
-        $profile=Get-PfcControlledProfile -Root $profileRoot -ResultRoot (Join-Path ([IO.Path]::GetTempPath()) 'pfc-r4-evidence') -DefaultCodexHome (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex')
+        $profile=Get-PfcControlledProfile -Root $profileRoot -ResultRoot (Join-Path ([IO.Path]::GetTempPath()) 'pfc-r4-evidence') -DefaultCodexHome (Join-Path ([IO.Path]::GetTempPath()) 'pfc-r4-mock-default-codex-home')
         $state=Initialize-PfcControlledProfile -Profile $profile
         Check-R4 'R4-08' (-not $state.controlled_profile_contaminated -and $state.locations_distinct) 'clean dedicated profile passes isolation'
         Set-Content -LiteralPath (Join-Path $profile.codex_home 'AGENTS.md') -Value 'contamination' -Encoding UTF8
@@ -59,7 +59,14 @@ try {
         Check-R4 'R4-09' (-not $state.default_auth_file_copied_or_linked -and -not $state.default_auth_checked) 'default auth is neither copied nor read'
         Check-R4 'R4-10' ($state.controlled_profile_isolation -eq 'PASS' -and -not (Test-Path -LiteralPath (Join-Path $profile.codex_home 'auth.json'))) 'unautenticated dedicated profile remains login-required without exec'
         $configText = Get-Content -Raw -LiteralPath $profile.permission_profile_config_path
-        Check-R4 'R4-15' ($configText -match 'default_permissions\s*=\s*"pfc-controlled"' -and $configText -match 'extends\s*=\s*":workspace"' -and $configText -match 'deny' -and $state.permission_profile_config_path -eq $profile.permission_profile_config_path) 'controlled profile config selects extends workspace and deny rules'
+        Check-R4 'R4-15' ($configText -match 'default_permissions\s*=\s*"pfc-controlled"' -and $configText -match 'extends\s*=\s*":workspace"' -and $configText -notmatch '":tmpdir"\s*=\s*"read"' -and $configText -match 'deny' -and $state.permission_profile_config_path -eq $profile.permission_profile_config_path) 'controlled profile selects workspace access and deny rules without exposing the whole temp directory'
+        $descendantRulesPresent=$true
+        foreach($deniedPath in @($profile.permission_profile_denied_paths)) {
+            $escapedDenied=$deniedPath.Replace('\','\\').Replace('"','\"')
+            $expectedDescendantRule='"'+$escapedDenied+'\\**" = "deny"'
+            if(-not $configText.Contains($expectedDescendantRule)){$descendantRulesPresent=$false}
+        }
+        Check-R4 'R4-19' $descendantRulesPresent 'each protected directory emits a descendant denial rule; this does not prove Windows blocks new files'
         Set-Content -LiteralPath (Join-Path $profile.codex_home 'auth.json') -Value '{"tokens":{}}' -Encoding UTF8
         $owned=Test-PfcControlledProfileIsolation -Profile $profile
         Check-R4 'R4-16' ($owned.controlled_auth_present -and $owned.controlled_auth_owned -and -not $owned.controlled_profile_contaminated) 'profile-owned auth artifact is accepted without default auth access'

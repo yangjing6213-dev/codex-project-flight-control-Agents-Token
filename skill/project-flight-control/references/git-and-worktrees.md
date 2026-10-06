@@ -6,6 +6,12 @@ Git identity and worktree state are evidence inputs. They are recorded in the ap
 
 The original worktree is preserved: the Skill does not switch its branch, clean it, or copy uncommitted files. Before a milestone worktree is created, Goalkeeper records branch, HEAD, modified and untracked files, merge/rebase/cherry-pick/revert/bisect state, and the requested base. A clean committed baseline is preferred. If the worktree is dirty, Goalkeeper emits a baseline decision packet so the user chooses current HEAD, a prepared commit, or another explicit SHA.
 
+Under explicit Continuous policy, the registered milestone worktree also requires deterministic repository/worktree/path identity and the exact expected lease-start HEAD. The conditional recovery procedure governs known dirty continuation; it does not authorize changes to the original worktree or silently choose a baseline.
+
+Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).
+
+Only when explicit Continuous policy is active and readiness, recovery, or dirty-state handling is needed: [readiness-and-recovery.md](readiness-and-recovery.md).
+
 ## Worktree topology and leases
 
 ```text

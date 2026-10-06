@@ -33,5 +33,13 @@
     ,{ "id": "package.windows.runtime", "kind": "windows_runtime" }
     ,{ "id": "package.specialist.protocol", "kind": "specialist_protocol" }
     ,{ "id": "package.specialist.schema", "kind": "specialist_schema" }
+    ,{ "id": "package.v2.control-contracts", "kind": "v2_control_contracts" }
+    ,{ "id": "package.v2.references.ownership", "kind": "v2_reference_ownership" }
+    ,{ "id": "package.v2.references.conditional-links", "kind": "v2_reference_links" }
+    ,{ "id": "package.v2.references.single-authority", "kind": "v2_reference_authority" }
+    ,{ "id": "package.v2.references.negative-self-check", "kind": "v2_reference_negatives" }
+    ,{ "id": "package.continuous.scenarios.path", "kind": "required_path", "path": "evals/scenarios/continuous-mode/ContinuousMode.Scenarios.ps1" }
+    ,{ "id": "package.continuous.smoke.path", "kind": "required_path", "path": "evals/scenarios/continuous-mode/WindowsSmoke/scenario.ps1" }
+    ,{ "id": "package.continuous.source-contract", "kind": "continuous_mode_source" }
   ]
 }

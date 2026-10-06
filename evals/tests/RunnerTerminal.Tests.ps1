@@ -1,3 +1,6 @@
+[CmdletBinding()]
+param([switch]$OnlyExplicitPath)
+
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path (Split-Path -Parent $PSScriptRoot) 'lib\CodexRunner.psm1') -Force
 
@@ -30,28 +33,67 @@ function New-TerminalStub {
         [void]$lines.Add(':copy_payload')
         [void]$lines.Add('if defined out copy /Y "' + $payloadPath + '" "%out%" >nul')
     }
-    if($SleepSeconds -gt 0){ [void]$lines.Add('ping 127.0.0.1 -n ' + ($SleepSeconds + 1) + ' >nul') }
+    if($SleepSeconds -gt 0){
+        $pingPath = (Join-Path $env:SystemRoot 'System32\PING.EXE').Replace('%','%%')
+        [void]$lines.Add('"' + $pingPath + '" 127.0.0.1 -n ' + ($SleepSeconds + 1) + ' >nul')
+    }
     $lines | Set-Content -LiteralPath $stubCmd -Encoding ASCII
     return $stubCmd
 }
 
 function Invoke-TerminalCase {
-    param([string[]]$Events,[switch]$WriteOutput,[string]$OutputJson,[int]$SleepSeconds = 0,[int]$TimeoutSeconds = 5,[int]$StartupTimeoutSeconds = 90,[int]$GraceSeconds = 1,[switch]$ExpectFailure,[switch]$NoTrailingNewline)
+    param([string[]]$Events,[switch]$WriteOutput,[string]$OutputJson,[int]$SleepSeconds = 0,[int]$TimeoutSeconds = 5,[int]$StartupTimeoutSeconds = 90,[int]$GraceSeconds = 1,[switch]$ExpectFailure,[switch]$NoTrailingNewline,[switch]$RemoveCodexFromPath,[string]$CodexExecutablePath,[switch]$UseStubAsExecutable,[switch]$UsePathDiscovery,[switch]$RelativeExecutablePath)
     $root = Join-Path ([IO.Path]::GetTempPath()) ('pfc-terminal-case-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $root -Force | Out-Null
     [void]$rootsToCleanup.Add($root)
     $stub = New-TerminalStub -Root $root -Events $Events -WriteOutput:$WriteOutput -OutputJson $OutputJson -SleepSeconds $SleepSeconds -NoTrailingNewline:$NoTrailingNewline
+    if ($UsePathDiscovery -or $RelativeExecutablePath) { Copy-Item -LiteralPath $stub -Destination (Join-Path $root 'codex.cmd') }
     $prompt = Join-Path $root 'prompt.md'; Set-Content -LiteralPath $prompt -Value '{"status":"CANARY_OK"}' -Encoding UTF8
     $schema = Join-Path $root 'schema.json'; Write-PfcUtf8NoBom -Path $schema -Content '{"type":"object","required":["status"],"properties":{"status":{"type":"string","enum":["CANARY_OK"]}},"additionalProperties":false}'
     $thrown = $false; $result = $null; $errorMessage = ''
-    try { $result = Invoke-PfcCodexRun -WorkingDirectory $root -PromptPath $prompt -OutputSchemaPath $schema -SandboxMode 'workspace-write' -ResultDirectory (Join-Path $root '.pfc-eval-results') -Phase 'GREEN' -TimeoutSeconds $TimeoutSeconds -StartupTimeoutSeconds $StartupTimeoutSeconds -PostTerminalGraceSeconds $GraceSeconds -CodexExecutablePath $stub } catch { $thrown = $true; $errorMessage = $_.Exception.Message }
+    $originalPath = $env:Path
+    $commandVisible = $true
+    $pushedLocation = $false
+    try {
+        if ($RemoveCodexFromPath) {
+            $env:Path = Join-Path $env:SystemRoot 'System32'
+            $commandVisible = $null -ne (Get-Command codex -CommandType Application -ErrorAction SilentlyContinue)
+        }
+        if ($UsePathDiscovery) { $env:Path = $root + ';' + (Join-Path $env:SystemRoot 'System32') }
+        $requestedExecutable = $stub
+        if (-not [string]::IsNullOrWhiteSpace($CodexExecutablePath)) { $requestedExecutable = $CodexExecutablePath }
+        if ($UsePathDiscovery) { $requestedExecutable = $null }
+        if ($UseStubAsExecutable) { $requestedExecutable = $stub }
+        if ($RelativeExecutablePath) {
+            Push-Location -LiteralPath $root
+            $pushedLocation = $true
+            $requestedExecutable = (Split-Path -Qualifier $root) + 'codex.cmd'
+            if (-not (Test-Path -LiteralPath $requestedExecutable -PathType Leaf)) { throw 'relative-path test fixture was not visible from its drive-relative location' }
+        }
+        $invokeParameters = @{ WorkingDirectory=$root; PromptPath=$prompt; OutputSchemaPath=$schema; SandboxMode='workspace-write'; ResultDirectory=(Join-Path $root '.pfc-eval-results'); Phase='GREEN'; TimeoutSeconds=$TimeoutSeconds; StartupTimeoutSeconds=$StartupTimeoutSeconds; PostTerminalGraceSeconds=$GraceSeconds }
+        if (-not [string]::IsNullOrWhiteSpace($requestedExecutable)) { $invokeParameters.CodexExecutablePath = $requestedExecutable }
+        $result = Invoke-PfcCodexRun @invokeParameters
+    } catch { $thrown = $true; $errorMessage = $_.Exception.Message }
+    finally { if ($pushedLocation) { Pop-Location }; if ($RemoveCodexFromPath -or $UsePathDiscovery) { $env:Path = $originalPath } }
+    if ($RemoveCodexFromPath -and $commandVisible) { throw 'explicit-path test could not hide the codex command from PATH' }
     if ($ExpectFailure) { Assert-RunnerTerminal $thrown ('expected terminal case to fail: ' + $errorMessage) } else { Assert-RunnerTerminal (-not $thrown) ('expected terminal case to pass: ' + $errorMessage) }
     return [pscustomobject]@{ root=$root; result=$result; thrown=$thrown; error=$errorMessage }
 }
 
+try {
 $agent = '{"type":"item.completed","item":{"type":"agent_message","text":"{\"status\":\"CANARY_OK\"}"}}'
 $completed = '{"type":"turn.completed"}'
 $baseEvents = @('{"type":"thread.started"}','{"type":"turn.started"}',$agent,$completed)
+$explicitPath = Invoke-TerminalCase -Events $baseEvents -TimeoutSeconds 5 -GraceSeconds 1 -RemoveCodexFromPath -UseStubAsExecutable
+Assert-RunnerTerminal (-not $explicitPath.thrown -and $explicitPath.result.model_result -eq 'VALID' -and -not $explicitPath.command_visible) 'TEST-explicit-path failed when codex was absent from PATH'
+$relativePath = Invoke-TerminalCase -Events $baseEvents -TimeoutSeconds 5 -GraceSeconds 1 -RelativeExecutablePath -ExpectFailure
+Assert-RunnerTerminal ($relativePath.thrown -and $relativePath.error -eq 'Codex executable path is unavailable.') 'TEST-relative-path accepted a drive-relative Codex executable path'
+$automaticPath = Invoke-TerminalCase -Events $baseEvents -TimeoutSeconds 5 -GraceSeconds 1 -UsePathDiscovery
+Assert-RunnerTerminal (-not $automaticPath.thrown -and $automaticPath.result.model_result -eq 'VALID') 'TEST-automatic-path failed to discover codex from PATH'
+if ($OnlyExplicitPath) {
+    Write-Output 'RUNNER_EXECUTABLE_PATH_TEST=PASS'
+    return
+}
 
 # D-048/D-059 terminal state-machine coverage:
 # TIMEOUT-01=TEST-5 (no terminal event + hard deadline),
@@ -60,13 +102,11 @@ $baseEvents = @('{"type":"thread.started"}','{"type":"turn.started"}',$agent,$co
 # TIMEOUT-04=TEST-4 (turn.failed is failure),
 # TIMEOUT-05=TEST-1 (hard timeout cleanup of the process tree).
 
-# TEST-1: existing Canary 1 replay plus recovered errors and forced post-terminal cleanup.
-$diagnosticRoot = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) '.pfc-eval-results\diagnostic'
-$rawFixture = Get-ChildItem -LiteralPath $diagnosticRoot -Filter 'raw.jsonl' -File -Recurse | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-Assert-RunnerTerminal ($null -ne $rawFixture) 'TEST-1 Canary raw fixture missing'
-$fixtureMetrics = Read-PfcCodexJsonlMetrics -Lines @(Get-Content -LiteralPath $rawFixture.FullName)
+# TEST-1: synthetic recovered errors and forced post-terminal cleanup.
+$recoveredEvents = @('{"type":"thread.started"}','{"type":"turn.started"}','{"type":"error"}','{"type":"error"}','{"type":"error"}','{"type":"error"}',$agent,$completed)
+$fixtureMetrics = Read-PfcCodexJsonlMetrics -Lines $recoveredEvents
 Assert-RunnerTerminal ($fixtureMetrics.error_events -eq 4 -and $fixtureMetrics.turn_completed -and $fixtureMetrics.last_completed_agent_message) 'TEST-1 replay metrics incomplete'
-$case1 = Invoke-TerminalCase -Events @('{"type":"thread.started"}','{"type":"turn.started"}','{"type":"error"}','{"type":"error"}','{"type":"error"}','{"type":"error"}',$agent,$completed) -SleepSeconds 4 -TimeoutSeconds 1 -GraceSeconds 1
+$case1 = Invoke-TerminalCase -Events $recoveredEvents -SleepSeconds 4 -TimeoutSeconds 1 -GraceSeconds 1
 Assert-RunnerTerminal ($case1.result.model_result -eq 'VALID') 'TEST-1 model result invalid'
 Assert-RunnerTerminal ($case1.result.turn_result -eq 'COMPLETED_WITH_RECOVERED_ERRORS') 'TEST-1 recovered error state missing'
 Assert-RunnerTerminal ($case1.result.final_output_source -eq 'JSONL_FINAL_AGENT_MESSAGE_FALLBACK') 'TEST-1 fallback source missing'
@@ -93,7 +133,7 @@ $lateCase = Invoke-TerminalCase -Events @('{"type":"thread.started"}','{"type":"
 Assert-RunnerTerminal ($lateCase.result.model_result -eq 'VALID') 'TEST-6 late-message case invalid'
 Assert-RunnerTerminal ($lateCase.result.final_output_source -eq 'JSONL_FINAL_AGENT_MESSAGE_FALLBACK') 'TEST-6 late-message fallback source missing'
 Assert-RunnerTerminal ($lateCase.result.final_agent_message -eq '{"status":"CANARY_OK"}') 'TEST-6 late-message overwrote frozen final agent message'
-Assert-RunnerTerminal ((Get-Content -Raw -LiteralPath (Join-Path $lateCase.root ($lateCase.result.raw_jsonl_path -replace '^\.pfc-eval-results[\\/]','\.pfc-eval-results\\'))) -match 'CANARY_OK' -and (Get-Content -Raw -LiteralPath (Join-Path $lateCase.root ($lateCase.result.raw_jsonl_path -replace '^\.pfc-eval-results[\\/]','\.pfc-eval-results\\'))) -match 'LATE') 'TEST-6 late-message raw evidence missing'
+Assert-RunnerTerminal ((Get-Content -Raw -LiteralPath (Join-Path $lateCase.root $lateCase.result.raw_jsonl_path)) -match 'CANARY_OK' -and (Get-Content -Raw -LiteralPath (Join-Path $lateCase.root $lateCase.result.raw_jsonl_path)) -match 'LATE') 'TEST-6 late-message raw evidence missing'
 
 # TEST-7: structured fallback schema failure is invalid.
 Invoke-TerminalCase -Events @('{"type":"thread.started"}','{"type":"turn.started"}','{"type":"item.completed","item":{"type":"agent_message","text":"{\"status\":\"WRONG\"}"}}',$completed) -TimeoutSeconds 5 -GraceSeconds 1 -ExpectFailure | Out-Null
@@ -103,8 +143,8 @@ $case8 = Invoke-TerminalCase -Events $baseEvents -SleepSeconds 2 -TimeoutSeconds
 Assert-RunnerTerminal ($case8.result.model_result -eq 'VALID' -and $case8.result.process_cleanup -eq 'NORMAL') 'TEST-8 terminal grace did not outlive hard deadline'
 
 # TEST-9: raw JSONL remains unchanged and each received line has an index timestamp.
-$rawPath = Join-Path $case8.root ($case8.result.raw_jsonl_path -replace '^\.pfc-eval-results[\\/]','\.pfc-eval-results\')
-$eventsPath = Join-Path $case8.root ($case8.result.event_index_path -replace '^\.pfc-eval-results[\\/]','\.pfc-eval-results\')
+$rawPath = Join-Path $case8.root $case8.result.raw_jsonl_path
+$eventsPath = Join-Path $case8.root $case8.result.event_index_path
 Assert-RunnerTerminal (Test-Path -LiteralPath $rawPath -PathType Leaf) 'TEST-9 raw path missing'
 Assert-RunnerTerminal (Test-Path -LiteralPath $eventsPath -PathType Leaf) 'TEST-9 event index missing'
 $rawLines = @(Get-Content -LiteralPath $rawPath)
@@ -116,9 +156,18 @@ $actualBytes = [IO.File]::ReadAllBytes($rawPath)
 Assert-RunnerTerminal ($expectedBytes.Length -eq $actualBytes.Length -and (0..($expectedBytes.Length - 1) | Where-Object { $expectedBytes[$_] -ne $actualBytes[$_] }).Count -eq 0) 'TEST-9 raw JSONL bytes changed'
 $case9NoTail = Invoke-TerminalCase -Events $baseEvents -TimeoutSeconds 5 -GraceSeconds 1 -NoTrailingNewline
 Assert-RunnerTerminal ($case9NoTail.result.model_result -eq 'VALID' -and $case9NoTail.result.turn_completed) 'TEST-9 unterminated final event invalid'
-$noTailRawPath = Join-Path $case9NoTail.root ($case9NoTail.result.raw_jsonl_path -replace '^\.pfc-eval-results[\\/]','\.pfc-eval-results\')
+$noTailRawPath = Join-Path $case9NoTail.root $case9NoTail.result.raw_jsonl_path
 $expectedNoTail = [Text.Encoding]::UTF8.GetBytes(($baseEvents -join "`r`n"))
 $actualNoTail = [IO.File]::ReadAllBytes($noTailRawPath)
 Assert-RunnerTerminal ($expectedNoTail.Length -eq $actualNoTail.Length -and (0..($expectedNoTail.Length - 1) | Where-Object { $expectedNoTail[$_] -ne $actualNoTail[$_] }).Count -eq 0) 'TEST-9 unterminated raw bytes changed'
 'RUNNER_TERMINAL_TESTS=9/9 PASS'
-foreach($cleanupRoot in $rootsToCleanup){ if(Test-Path -LiteralPath $cleanupRoot){ Remove-Item -LiteralPath $cleanupRoot -Recurse -Force } }
+} finally {
+    $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\')
+    foreach ($cleanupRoot in $rootsToCleanup) {
+        $fullRoot = [IO.Path]::GetFullPath($cleanupRoot).TrimEnd('\')
+        if (-not $fullRoot.StartsWith($tempBase + '\', [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($fullRoot) -notmatch '^pfc-terminal-case-[0-9a-f]{32}$') {
+            throw 'Terminal test cleanup path check failed.'
+        }
+        if (Test-Path -LiteralPath $fullRoot) { Remove-Item -LiteralPath $fullRoot -Recurse -Force }
+    }
+}

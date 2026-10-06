@@ -2,15 +2,24 @@
 
 ## Unreleased
 
+### V2 Development Track
+
+- V2 Continuous Mode `0.2.0-dev.0` remains a development track. The original product Candidate's 23-child/812-row batch has a passing saved-output reconciliation, while its wrapper exited `1` on a StrictSchema parse error. Later evaluation-runner fixes have separate affected and focused checks; specification, quality and Ponytail R3 reviews accepted their implementation scope with no unresolved Critical or Important finding. The old batch is not claimed as a full run on the current Candidate. Formal RED is `PARTIAL` (2 attempted / 0 valid / 2 invalid); GREEN and Windows smoke remain `NOT_RUN`; `PFC-UPSTREAM-001` remains unresolved. See [the V2 verification report](docs/verification/v2-verification-report.md) and [release gates](docs/verification/v2-release-gate.json).
+- Added explicit `START CONTINUOUS_MODE` and `RESUME CONTINUOUS_MODE` execution policy, bounded Authorization and sequential Waves, two task-identity gates, risk-tier validation, recovery and hard-stop contracts. The four top-level modes and default pause behavior remain.
+- Formal scenario fixtures now pin 41 actual product inputs to the source Candidate and require independently started Runner-managed Builder/Verifier processes. The 35 attempts per phase count top-level runs only; separately started roles add usage without a platform-enforced cumulative cap and require explicit authorization. Invalid formal attempts remain invalid.
+
+- Corrected Runner handoff identity, exact Verifier report SHA binding, pre-dispatch checks and fail-closed error handling. Latest connection diagnostic was stopped by the capture script on an optional PowerShell snapshot warning; the prepared process-only fix has not had a new live run.
+
 ### Implemented
 
-- Added the MIT license and public development snapshot documentation. Version remains `0.1.0-dev.0`; stable-release and efficiency gates remain blocked.
+- Added the MIT license and public development snapshot documentation in the prior `0.1.0-dev.0` snapshot; stable-release and efficiency gates remain blocked.
 - Goalkeeper, Builder, and Verifier package implementation, Builder Efficiency Protocol, deterministic evaluation harness, file-handshake Permission Probe, and strict result Schema.
 
 ### Deterministically Verified
 
 - Bootstrap, package, Harness, Builder Efficiency, profiles, isolation, schema, runner, Doctor, Installer, Specialist protocol, and file-handshake suites pass under Windows PowerShell 5.1.
-- Approved design SHA-256 remains `e5c90a41c28ce8e7f9192102f14613adef5af93ee7ee5007b4f69df6ed57dedd`.
+- Prior affected checks include ContinuousMode 301/301 and a separate focused 8/8, plus five regression suites totaling 89 PASS. The full model-contract v3 run was 84 PASS / 1 test-fixture FAIL; the original failed check and two safety/accounting checks separately passed 3/3 after a test-only correction. The historical Task 11 trace fix passed a separate 16/16 focused selection, including bounded CM-05 no-dispatch sample collection with independent correctness still `NOT_RUN`. Those historical receipts do not establish a single 85/85 run. The current October 6 local batch separately passed all 26 check groups, including ContinuousMode 302/302, ContinuousModeModelContract 106/106 and RunnerOwnedLifecycle 60/60; it used no live model calls. Installer update and rollback evidence uses disposable fixtures; fake contract checks made zero formal model calls.
+- Approved V2 design SHA-256 is `fda8edc9b476e94f387ad553118a9d4982cfb11439d018d8595fecbfeeb259f6`.
 
 ### Runtime Blocked
 
@@ -19,4 +28,4 @@
 
 ### Not Yet Proven
 
-- Model-backed efficiency improvement, token reduction, Runtime Specialist capability, and a stable release remain unproven.
+- Model-backed efficiency improvement, token reduction, Runtime Specialist capability, real Windows smoke, and a stable release remain unproven.

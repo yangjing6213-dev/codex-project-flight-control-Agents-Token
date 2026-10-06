@@ -1,0 +1,198 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "pfc.continuation-checkpoint.v1"
+      ]
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "control_run_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "lease_epoch": {
+      "type": "integer"
+    },
+    "wave_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "milestone_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "previous_accepted_checkpoint_sha": {
+      "type": "string",
+      "pattern": "(?-i:^(?:[0-9a-f]{40}|FIRST_MILESTONE)\\z)"
+    },
+    "current_milestone_base_sha": {
+      "type": "string",
+      "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+    },
+    "expected_builder_start_sha": {
+      "type": "string",
+      "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+    },
+    "repair_budget": {
+      "type": "object",
+      "properties": {
+        "builder_code_repair_attempts": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "auto_rework_rounds": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "candidate_revisions": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      },
+      "required": [
+        "builder_code_repair_attempts",
+        "auto_rework_rounds",
+        "candidate_revisions"
+      ],
+      "additionalProperties": false
+    },
+    "recovery_manifest": {
+      "type": "object",
+      "properties": {
+        "recovery_package_reference": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        },
+        "git_status": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|\\z))(?!.*[:\\\\\\x00-\\x1f])[^/]+(?:/[^/]+)*\\z"
+              },
+              "original_path": {
+                "type": "string",
+                "pattern": "^(?:NONE|(?!/)(?!.*(?:^|/)\\.\\.?(?:/|\\z))(?!.*[:\\\\\\x00-\\x1f])[^/]+(?:/[^/]+)*)\\z"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  " M",
+                  "M ",
+                  "MM",
+                  "A ",
+                  "AM",
+                  " D",
+                  "D ",
+                  "R ",
+                  "RM",
+                  "C ",
+                  "CM",
+                  "??"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "original_path",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|\\z))(?!.*[:\\\\\\x00-\\x1f])[^/]+(?:/[^/]+)*\\z"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "(?-i:^[0-9a-f]{64}\\z)"
+              },
+              "size_bytes": {
+                "type": "integer"
+              },
+              "recovery_copy": {
+                "type": "string",
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|\\z))(?!.*[:\\\\\\x00-\\x1f])[^/]+(?:/[^/]+)*\\z"
+              },
+              "classification": {
+                "type": "string",
+                "enum": [
+                  "ACTIVE",
+                  "HISTORICAL",
+                  "UNKNOWN"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "size_bytes",
+              "recovery_copy",
+              "classification"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?(?:/|\\z))(?!.*[:\\\\\\x00-\\x1f])[^/]+(?:/[^/]+)*\\z"
+          }
+        }
+      },
+      "required": [
+        "recovery_package_reference",
+        "git_status",
+        "files",
+        "allowed_paths"
+      ],
+      "additionalProperties": false
+    },
+    "updated_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z\\z"
+    }
+  },
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "control_run_id",
+    "lease_epoch",
+    "wave_id",
+    "milestone_id",
+    "previous_accepted_checkpoint_sha",
+    "current_milestone_base_sha",
+    "expected_builder_start_sha",
+    "repair_budget",
+    "recovery_manifest",
+    "updated_at"
+  ],
+  "additionalProperties": false
+}

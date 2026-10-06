@@ -72,6 +72,7 @@ function Initialize-PfcControlledProfile {
         if ([string]::IsNullOrWhiteSpace($denied)) { continue }
         $escaped = $denied.Replace('\','\\').Replace('"','\"')
         $config += ('"' + $escaped + '" = "deny"')
+        $config += ('"' + $escaped + '\\**" = "deny"')
     }
     [IO.File]::WriteAllText($Profile.permission_profile_config_path, ($config -join "`n") + "`n", (New-Object Text.UTF8Encoding($false)))
     return (Test-PfcControlledProfileIsolation -Profile $Profile)

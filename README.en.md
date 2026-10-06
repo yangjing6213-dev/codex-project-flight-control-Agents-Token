@@ -6,7 +6,13 @@
 
 When AI works on a complex project, one role keeps the goal clear, another does the work, and a third checks the results.
 
-> Current version: `0.1.0-dev.0`.
+> Current version: `0.2.0-dev.0`.
+
+V2 Continuous Mode remains a **development track**. Of 14 planned tasks, Tasks 1–11 have completed local implementation and their scoped reviews. Three tasks remain: live model baseline, post-change comparison, and the full Windows workflow check. Formal RED has 2 attempted / 0 valid / 2 invalid runs; it still needs 35 valid samples, followed by 35 GREEN samples.
+
+This update fixes role handoff identities, reviewed-version binding, and stopping after runtime errors. The latest connection diagnostic was terminated prematurely by its local capture script; it does not establish a continuing network failure. A new launch copy disables only the optional PowerShell shell snapshot, but no new model call has been made. Full runtime verification and confidential-read protection remain unverified. This is a source and progress update, not stable V2 acceptance. See the [verification report](docs/verification/v2-verification-report.md) and [known risks](docs/verification/v2-known-risks.md).
+
+This update publishes the current source and documentation only. Earlier development commits and raw run records remain local. Historical commit IDs identify the evidence behind prior checks; those commits are not published GitHub references. A public clone alone cannot reproduce the existing frozen formal model evaluation. That evaluation still requires the retained local version history and remains incomplete.
 
 ## 1. What is this repository?
 
@@ -151,7 +157,7 @@ If the installer reports a conflict with existing files, keep those files and gi
 
 ## 7. How to use it
 
-This Skill only starts when you explicitly invoke it. Enter the following on the first line of your Codex message:
+This Skill only starts when you explicitly invoke it. For an ordinary task, enter the following on the first line of your Codex message:
 
 ```text
 $project-flight-control
@@ -174,6 +180,15 @@ There are four modes:
 - `RESUME`: Continue from existing Git history and project records.
 - `AUDIT`: Check an existing implementation, its results, or its release status.
 - `STATUS_ONLY`: View progress without changing files.
+
+`CONTINUOUS_MODE` is an execution policy for `START` or `RESUME`, not a fifth mode. It runs only when you explicitly enable it and provide an authorized scope and Stop Gate. Goalkeeper may continue between accepted milestones inside that scope; the default still pauses after each milestone. V2 is still under development verification, and Continuous Mode does not bypass identity, validation, risk or user-decision gates. For example:
+
+```text
+$project-flight-control START CONTINUOUS_MODE
+Goal: Complete two already approved milestones in this project.
+Authorized scope: Only those two milestones; no push, release or production change.
+Stop Gate: Pause after both milestones have been completed and reviewed.
+```
 
 To continue an existing task:
 
@@ -229,6 +244,8 @@ By default, each stage stops at a clear checkpoint. Results that have not passed
 
 - You must enter `$project-flight-control` to activate it. Ordinary conversations do not trigger it automatically.
 - Release verification for the current version is incomplete; it has not met the requirements for a stable release.
+- V2 local deterministic results do not establish formal model effectiveness or real Windows isolation and recovery; see the [known risks](docs/verification/v2-known-risks.md).
+- During formal model evaluation, the Runner starts Builder and Verifier separately, then resumes the Goalkeeper conversation. The Runner records their starts and completions; these are not native Codex child-task records. Each attempt permits at most 13 role tasks, 13 Goalkeeper resumptions and 27 Codex processes, executed serially without automatic retry. The planned 35 attempts per phase limit only top-level runs; the platform has no cumulative hard usage cap. Both existing formal attempts were invalid. Further live runs and their additional usage require separate explicit authorization.
 - Strict read isolation on Windows has not been reliably verified. Do not rely on this workflow to protect passwords, keys, customer information, or other sensitive files.
 - Builder Efficiency has passed deterministic checks; comparisons using real models are incomplete. The hypothetical estimates above are not measured results.
 - The Skill uses Git, commits, and separate workspaces to preserve progress. Back up important projects first, and carefully review what you are authorizing before any push, publication, or production operation.

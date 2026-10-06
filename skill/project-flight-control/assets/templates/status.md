@@ -1,4 +1,20 @@
 # STATUS
+Canonical Project Sources: NOT_APPLICABLE
+Execution Policy: PAUSE_AFTER_MILESTONE
+Continuous Authorization ID / Status: NOT_APPLICABLE
+Continuous Execution State: DISABLED
+Authorized Scope: NOT_APPLICABLE
+Stop Gate: NOT_APPLICABLE
+Current Wave ID / State / Progress: NOT_APPLICABLE
+Current Risk Level: NOT_APPLICABLE
+Validation Tier: NOT_APPLICABLE
+Pre-write Identity Gate: NOT_APPLICABLE
+Pre-review Identity Gate: NOT_APPLICABLE
+Known Limitation IDs: NOT_APPLICABLE
+Repair Budget Used / Remaining: NOT_APPLICABLE
+Consecutive Blocked Count: NOT_APPLICABLE
+Continuation Checkpoint: NOT_APPLICABLE
+Next Automatic Action: NOT_APPLICABLE
 Control Run ID: UNKNOWN
 Lease Epoch: UNKNOWN
 Goal ID: UNKNOWN

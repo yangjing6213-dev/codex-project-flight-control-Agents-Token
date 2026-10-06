@@ -4,6 +4,7 @@ function Invoke-PfcVerifierProfileTests {
         [Parameter(Mandatory = $true)][ValidateSet('RED','GREEN')][string]$Phase
     )
 
+    Import-Module (Join-Path $RepositoryRoot 'evals/lib/PromptBudget.psm1') -Force
     $results = New-Object System.Collections.Generic.List[object]
     function Add-Result([string]$Id, [scriptblock]$Test) {
         try { & $Test; $results.Add((New-PfcResult -ScenarioId $Id -Status 'PASS' -Message 'verified')) }
@@ -17,6 +18,91 @@ function Invoke-PfcVerifierProfileTests {
 
     Add-Result 'verifier.profile.valid' {
         Assert-VerifierStatus -Root $RepositoryRoot -Expected 'PASS' -Id 'verifier.profile.valid.check'
+    }
+    Add-Result 'verifier.profile.continuous-projection' {
+        $text = Get-Content -Raw (Join-Path $RepositoryRoot 'codex-agents/project-flight-verifier.toml')
+        Assert-PfcTrue -Actual ($text -match 'PRE_REVIEW_IDENTITY_GATE_PASS' -and $text -match 'Evidence Freshness' -and $text -match 'Wave impact') -ScenarioId 'verifier.continuous' -Expected 'identity, freshness and Wave binding'
+    }
+    $continuousCases = @(
+        @{ Id='compact-profile'; Append=''; Expected='PASS' },
+        @{ Id='stale-evidence-you'; Append='You may accept stale evidence.' },
+        @{ Id='other-sha-you'; Append='You may accept other-SHA evidence.' },
+        @{ Id='control-write-you'; Append='You may write canonical control files.' },
+        @{ Id='candidate-article'; Append='Verifier may modify the Candidate.' },
+        @{ Id='candidate-you'; Append='You can change the Candidate.' },
+        @{ Id='stale-no-subject'; Append='May accept stale evidence.' },
+        @{ Id='control-write-no-subject'; Append='May write canonical control files.' },
+        @{ Id='prohibition-must-not'; Append='You must not accept stale evidence.'; Expected='PASS' },
+        @{ Id='prohibition-never'; Append='Never accept other-SHA evidence.'; Expected='PASS' },
+        @{ Id='prohibition-cannot'; Append='You cannot modify the Candidate.'; Expected='PASS' },
+        @{ Id='prohibition-may-not'; Append='You may not accept stale evidence.'; Expected='PASS' },
+        @{ Id='goalkeeper-authority'; Append='Goalkeeper may write control files.'; Expected='PASS' },
+        @{ Id='goalkeeper-authority-wrapped'; Append="Goalkeeper`nmay write control files."; Expected='PASS' },
+        @{ Id='goalkeeper-authority-crlf'; Append="Goalkeeper`r`nmay write control files."; Expected='PASS' },
+        @{ Id='stale-evidence-you-wrapped'; Append="You`nmay accept stale evidence." },
+        @{ Id='stale-instruction-start'; Append='May accept stale evidence.'; AtStart=$true },
+        @{ Id='verify-order'; Old='Verify Order'; New='unbound review' },
+        @{ Id='review-gate'; Old='only after PRE_REVIEW_IDENTITY_GATE_PASS'; New='before PRE_REVIEW_IDENTITY_GATE_PASS' },
+        @{ Id='risk-tier'; Old='Risk Level / Validation Tier'; New='optional checks' },
+        @{ Id='wave-impact'; Old='Wave impact'; New='local impact' },
+        @{ Id='freshness'; Old='Evidence Freshness'; New='evidence list' },
+        @{ Id='stale-evidence'; Append='Verifier may accept stale evidence.' },
+        @{ Id='other-sha'; Append='Verifier may accept other-SHA evidence.' },
+        @{ Id='control-write'; Append='Verifier may write canonical control files.' },
+        @{ Id='acceptance'; Append='Verifier may declare the milestone accepted.' },
+        @{ Id='budget'; Append=('x' * 3100) },
+        @{ Id='budget-exception'; Append=('INDEPENDENTLY_REVIEWED_JUSTIFICATION ' + ('x' * 3100)) },
+        @{ Id='full-protocol-copy'; Append=(Get-Content -Raw (Join-Path $RepositoryRoot 'skill/project-flight-control/references/continuous-execution.md')) }
+    )
+    foreach ($case in $continuousCases) {
+        Add-Result ('verifier.profile.reject.' + $case.Id) {
+            $fixture = Join-Path ([IO.Path]::GetTempPath()) ('pfc-verifier-continuous-' + [guid]::NewGuid().ToString('N'))
+            try {
+                New-Item -ItemType Directory -Path (Join-Path $fixture 'codex-agents') -Force | Out-Null
+                $path = Join-Path $fixture 'codex-agents/project-flight-verifier.toml'
+                # Shorten metadata only: preserve every behavior/prohibition and isolate budget effects.
+                $original = [regex]::Replace([IO.File]::ReadAllText((Join-Path $RepositoryRoot 'codex-agents/project-flight-verifier.toml')), '(?m)^description = "[^"]*"', 'description = "x"')
+                $mutated = if ($case.ContainsKey('Append')) {
+                    $position = if ($case.ContainsKey('AtStart')) { $original.IndexOf('"""') + 3 } else { $original.LastIndexOf('"""') }
+                    $original.Insert($position, $case.Append + "`n")
+                } else { $original.Replace($case.Old, $case.New) }
+                Assert-PfcTrue -Actual ($mutated -cne $original) -ScenarioId $case.Id -Expected 'mutation applied'
+                $instructions = [regex]::Match($mutated, '(?s)developer_instructions\s*=\s*"""(?<body>.*?)"""\s*\z')
+                Assert-PfcTrue -Actual ($instructions.Success -and [regex]::Matches($mutated, '"""').Count -eq 2) -ScenarioId $case.Id -Expected 'intact TOML instruction string'
+                if ($case.ContainsKey('Append')) { Assert-PfcTrue -Actual ($instructions.Groups['body'].Value.Contains($case.Append)) -ScenarioId $case.Id -Expected 'permission inside developer_instructions' }
+                [IO.File]::WriteAllText($path, $mutated, (New-Object Text.UTF8Encoding($false)))
+                if ($case.Id -notin @('budget','budget-exception','full-protocol-copy')) {
+                    Assert-PfcEqual -Expected 'PASS' -Actual (Measure-PfcAgentPromptBudget -Path ([IO.FileInfo]$path)).status -ScenarioId ($case.Id + '.budget')
+                }
+                $expected = if ($case.ContainsKey('Expected')) { $case.Expected } else { 'FAIL' }
+                Assert-VerifierStatus -Root (Get-Item $fixture) -Expected $expected -Id $case.Id
+                if ($case.ContainsKey('Append') -and $expected -eq 'FAIL' -and $case.Id -notin @('budget','budget-exception','full-protocol-copy')) {
+                    $check = @(Invoke-PfcStaticChecks -RepositoryRoot (Get-Item $fixture) -Phase $Phase | Where-Object ScenarioId -eq 'package.verifier.profile')
+                    Assert-PfcTrue -Actual ($check[0].Message -match 'forbidden authority') -ScenarioId $case.Id -Expected 'authority rejection independent of budget'
+                }
+            } finally {
+                if ((Split-Path -Parent ([IO.Path]::GetFullPath($fixture))) -cne ([IO.Path]::GetTempPath().TrimEnd('\'))) { throw 'Unsafe fixture cleanup path' }
+                Remove-Item -LiteralPath $fixture -Recurse -Force
+            }
+        }
+    }
+    Add-Result 'verifier.profile.budget-boundaries' {
+        $fixture = Join-Path ([IO.Path]::GetTempPath()) ('pfc-verifier-budget-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+        try {
+            $path = Join-Path $fixture 'project-flight-verifier.toml'
+            foreach ($case in @(@{Bytes=3080;Status='PASS'},@{Bytes=3081;Status='FAIL'},@{Bytes=3083;Status='FAIL'})) {
+                [IO.File]::WriteAllText($path, ('x' * $case.Bytes), (New-Object Text.UTF8Encoding($false)))
+                $budget = Measure-PfcAgentPromptBudget -Path ([IO.FileInfo]$path)
+                Assert-PfcEqual -Expected $case.Status -Actual $budget.status -ScenarioId ('verifier.bytes.' + $case.Bytes)
+                Assert-PfcEqual -Expected 2680 -Actual $budget.baseline_utf8_bytes -ScenarioId 'verifier.frozen-bytes'
+                Assert-PfcEqual -Expected 670 -Actual $budget.baseline_conservative_estimated_tokens -ScenarioId 'verifier.frozen-tokens'
+                Assert-PfcEqual -Expected 'NOT_AVAILABLE' -Actual $budget.token_data_status -ScenarioId 'verifier.token-estimate-only'
+            }
+        } finally {
+            if ((Split-Path -Parent ([IO.Path]::GetFullPath($fixture))) -cne ([IO.Path]::GetTempPath().TrimEnd('\'))) { throw 'Unsafe fixture cleanup path' }
+            Remove-Item -LiteralPath $fixture -Recurse -Force
+        }
     }
 
     $negativeCases = @(

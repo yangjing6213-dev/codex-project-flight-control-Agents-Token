@@ -1,4 +1,9 @@
 # DECISION
+Continue Automatically: false
+Pause Reason: NOT_APPLICABLE
+Authorization Status: NOT_APPLICABLE
+Next Milestone: NOT_APPLICABLE
+Next Wave Action: NOT_APPLICABLE
 Control Run ID: UNKNOWN
 Lease Epoch: UNKNOWN
 Goal ID: UNKNOWN

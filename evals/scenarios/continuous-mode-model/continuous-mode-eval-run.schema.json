@@ -1,0 +1,117 @@
+{
+    "type":  "object",
+    "properties":  {
+                       "scenario_id":  {
+                                           "type":  "string",
+                                           "enum":  [
+                                                        "CM-01",
+                                                        "CM-02",
+                                                        "CM-03",
+                                                        "CM-04",
+                                                        "CM-05",
+                                                        "CM-06",
+                                                        "CM-07"
+                                                    ]
+                                       },
+                       "phase":  {
+                                     "type":  "string",
+                                     "enum":  [
+                                                  "RED",
+                                                  "GREEN"
+                                              ]
+                                 },
+                       "status":  {
+                                      "type":  "string",
+                                      "enum":  [
+                                                   "PASS",
+                                                   "FAIL",
+                                                   "PARTIAL",
+                                                   "BLOCKED",
+                                                   "NOT_RUN"
+                                               ]
+                                  },
+                       "metrics":  {
+                                       "items":  {
+                                                     "type":  "object",
+                                                     "properties":  {
+                                                                        "key":  {
+                                                                                    "type":  "string",
+                                                                                    "enum":  [
+                                                                                                 "user_confirmation_count",
+                                                                                                 "goalkeeper_round_trips",
+                                                                                                 "repeated_reads",
+                                                                                                 "full_regressions",
+                                                                                                 "irrelevant_checks",
+                                                                                                 "repair_count",
+                                                                                                 "model_turns",
+                                                                                                 "tool_calls",
+                                                                                                 "milestones_completed",
+                                                                                                 "false_completions",
+                                                                                                 "scope_deviations"
+                                                                                             ]
+                                                                                },
+                                                                        "value":  {
+                                                                                      "type":  [
+                                                                                                   "integer",
+                                                                                                   "null"
+                                                                                               ]
+                                                                                  },
+                                                                        "evidence":  {
+                                                                                         "type":  "string"
+                                                                                     }
+                                                                    },
+                                                     "required":  [
+                                                                      "key",
+                                                                      "value",
+                                                                      "evidence"
+                                                                  ],
+                                                     "additionalProperties":  false
+                                                 },
+                                       "type":  "array"
+                                   },
+                       "verification":  {
+                                            "items":  {
+                                                          "type":  "object",
+                                                          "properties":  {
+                                                                             "key":  {
+                                                                                         "type":  "string",
+                                                                                         "enum":  [
+                                                                                                      "false_accepts",
+                                                                                                      "unauthorized_writes",
+                                                                                                      "wrong_task_commits",
+                                                                                                      "evidence_sha_mismatches",
+                                                                                                      "not_run_to_pass",
+                                                                                                      "unauthorized_remote_actions",
+                                                                                                      "data_loss",
+                                                                                                      "required_validation_reduction"
+                                                                                                  ]
+                                                                                     },
+                                                                             "value":  {
+                                                                                           "type":  [
+                                                                                                        "integer",
+                                                                                                        "null"
+                                                                                                    ]
+                                                                                       },
+                                                                             "evidence":  {
+                                                                                              "type":  "string"
+                                                                                          }
+                                                                         },
+                                                          "required":  [
+                                                                           "key",
+                                                                           "value",
+                                                                           "evidence"
+                                                                       ],
+                                                          "additionalProperties":  false
+                                                      },
+                                            "type":  "array"
+                                        }
+                   },
+    "required":  [
+                     "scenario_id",
+                     "phase",
+                     "status",
+                     "metrics",
+                     "verification"
+                 ],
+    "additionalProperties":  false
+}

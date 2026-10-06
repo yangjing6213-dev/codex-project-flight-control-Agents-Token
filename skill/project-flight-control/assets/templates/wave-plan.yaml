@@ -1,0 +1,52 @@
+{
+  "schema_version": "pfc.wave-plan.v1",
+  "wave_id": "WAVE-001",
+  "authorization_id": "AUTH-20260920-001",
+  "base_checkpoint_sha": "0000000000000000000000000000000000000000",
+  "goal_id": "GOAL-001",
+  "stop_gate": "A-030",
+  "milestones": [
+    {
+      "milestone_id": "A-015",
+      "contract_id": "MC-015",
+      "contract_version": 1,
+      "risk_level": "LOW",
+      "dependencies": [],
+      "exact_branch": "codex/pfc/AUTH-20260920-001/A-015",
+      "worktree_identity_algorithm": "PFC_WORKTREE_ROOT_SHA256_V1",
+      "worktree_identity": "0000000000000000000000000000000000000000000000000000000000000000",
+      "validation_plan": [
+        {
+          "tier": "T1",
+          "required": true,
+          "applicability_reason": "Required by approved risk policy",
+          "checks": [
+            "SYNTHETIC check; replace with approved command"
+          ],
+          "result": "NOT_RUN",
+          "evidence": []
+        },
+        {
+          "tier": "T2",
+          "required": true,
+          "applicability_reason": "Required by approved risk policy",
+          "checks": [
+            "SYNTHETIC check; replace with approved command"
+          ],
+          "result": "NOT_RUN",
+          "evidence": []
+        }
+      ]
+    }
+  ],
+  "wave_validation": {
+    "tier": "T3",
+    "required": true,
+    "applicability_reason": "Required by approved risk policy",
+    "checks": [
+      "SYNTHETIC check; replace with approved command"
+    ],
+    "result": "NOT_RUN",
+    "evidence": []
+  }
+}

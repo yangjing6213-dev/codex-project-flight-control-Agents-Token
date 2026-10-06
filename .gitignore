@@ -24,3 +24,9 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Local publication audit only
+.local-audit/
+PRE-PUBLISH-REPORT.md
+POST-PUBLISH-REPORT.md
+UPDATE-REPORT.md

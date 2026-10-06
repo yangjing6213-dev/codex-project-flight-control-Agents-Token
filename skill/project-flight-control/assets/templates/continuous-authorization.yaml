@@ -1,0 +1,71 @@
+{
+  "schema_version": "pfc.continuous-authorization.v1",
+  "authorization_id": "AUTH-20260920-001",
+  "authorization_status": "ACTIVE",
+  "execution_policy": "CONTINUOUS",
+  "invocation_mode": "START",
+  "goal": {
+    "goal_id": "GOAL-001",
+    "goal_version": 3
+  },
+  "scope": {
+    "type": "MILESTONE_RANGE",
+    "from": "A-015",
+    "to": "A-030",
+    "stop_gate": "A-030"
+  },
+  "repository": {
+    "identity_algorithm": "PFC_GIT_COMMON_DIR_SHA256_V1",
+    "repository_identity": "0000000000000000000000000000000000000000000000000000000000000000",
+    "authorized_base_checkpoint_sha": "0000000000000000000000000000000000000000",
+    "source_branch": "main",
+    "write_branch_policy": "MILESTONE_WORKTREE_ONLY",
+    "write_branch_namespace": "codex/pfc/AUTH-20260920-001/",
+    "default_branch_write": false
+  },
+  "paths": {
+    "hash_algorithm": "PFC_REPO_PATH_SET_SHA256_V1",
+    "writable_paths_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "forbidden_paths_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "permissions": {
+    "local_commit": true,
+    "existing_dependency_use": true,
+    "planned_dependency_install": false,
+    "non_destructive_migration": true,
+    "automatic_repair": true
+  },
+  "limits": {
+    "max_wave_size": 5,
+    "max_builder_code_repair_attempts": 2,
+    "max_auto_rework_rounds": 2,
+    "max_candidate_revisions": 3,
+    "max_consecutive_blocked_milestones": 1
+  },
+  "forbidden": {
+    "push": true,
+    "merge": true,
+    "release": true,
+    "deploy": true,
+    "destructive_migration": true,
+    "administrator_action": true,
+    "paid_action": true,
+    "cross_project_write": true
+  },
+  "approval": {
+    "approved_by": "USER",
+    "approved_at": "2026-09-20T00:00:00Z",
+    "source_decision_id": "DEC-001"
+  },
+  "invalidation_triggers": [
+    "CONTRACT_CHANGE",
+    "AUTHORIZED_SCOPE_EXHAUSTED",
+    "STOP_GATE_REACHED",
+    "BASELINE_DRIFT",
+    "BRANCH_CHANGE",
+    "UNKNOWN_DIRTY_WORKTREE",
+    "USER_PAUSE",
+    "HARD_BLOCKER",
+    "GOAL_CHANGE"
+  ]
+}

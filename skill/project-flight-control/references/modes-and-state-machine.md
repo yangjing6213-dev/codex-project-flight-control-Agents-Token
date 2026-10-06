@@ -13,6 +13,10 @@ STATUS_ONLY  read status, blockers, and forecast without writes
 
 When no mode is supplied, inspect facts in this order: `STATUS_ONLY`, `AUDIT`, `RESUME`, then `START`. A mode conflict is reported and paused; it is never silently changed.
 
+Continuous execution is a policy under START/RESUME, not a fifth mode. The V1 milestone and Goal transitions below remain authoritative; the policy adds separate authorization/runtime state and gated continuation without replacing them.
+
+Only when explicit START CONTINUOUS_MODE or RESUME CONTINUOUS_MODE: [continuous-execution.md](continuous-execution.md).
+
 ## Milestone states
 
 ```text

@@ -1,0 +1,4 @@
+# CONTINUOUS_MODE_TREATMENT
+Phase is GREEN.
+$project-flight-control START CONTINUOUS_MODE
+Apply the actual frozen .pfc-product/skill/project-flight-control/SKILL.md and its conditionally loaded references. This explicit entry is the treatment difference. The common task, safety, independent native roles, model controls, permitted writes and required checks remain identical. The bounded scenario grants continuous execution only across its stated milestones and ends at its final acceptance Stop Gate. Goalkeeper must freeze that authorization and runtime identity from observed fixture state using the product's templates before leasing writes; do not invent review evidence or bypass unresolved gates.

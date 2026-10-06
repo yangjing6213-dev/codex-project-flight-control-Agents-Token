@@ -1,0 +1,363 @@
+{
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "pfc.continuous-authorization.v1"
+      ]
+    },
+    "authorization_id": {
+      "type": "string",
+      "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+    },
+    "authorization_status": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "PAUSED",
+        "INVALIDATED",
+        "SUSPENDED_BY_RUNTIME_ROLLBACK",
+        "EXHAUSTED"
+      ]
+    },
+    "execution_policy": {
+      "type": "string",
+      "enum": [
+        "CONTINUOUS"
+      ]
+    },
+    "invocation_mode": {
+      "type": "string",
+      "enum": [
+        "START",
+        "RESUME"
+      ]
+    },
+    "goal": {
+      "type": "object",
+      "properties": {
+        "goal_id": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        },
+        "goal_version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "goal_id",
+        "goal_version"
+      ],
+      "additionalProperties": false
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "MILESTONE_RANGE"
+          ]
+        },
+        "from": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        },
+        "stop_gate": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        }
+      },
+      "required": [
+        "type",
+        "from",
+        "to",
+        "stop_gate"
+      ],
+      "additionalProperties": false
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "identity_algorithm": {
+          "type": "string",
+          "enum": [
+            "PFC_GIT_COMMON_DIR_SHA256_V1"
+          ]
+        },
+        "repository_identity": {
+          "type": "string",
+          "pattern": "(?-i:^[0-9a-f]{64}\\z)"
+        },
+        "authorized_base_checkpoint_sha": {
+          "type": "string",
+          "pattern": "(?-i:^[0-9a-f]{40}\\z)"
+        },
+        "source_branch": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:\\.\\.|//|@\\{|[~^:?*\\[\\\\\\s]))(?!.*(?:\\.\\z|/\\z|\\.lock\\z))[^/]+(?:/[^/]+)*\\z"
+        },
+        "write_branch_policy": {
+          "type": "string",
+          "enum": [
+            "MILESTONE_WORKTREE_ONLY"
+          ]
+        },
+        "write_branch_namespace": {
+          "type": "string",
+          "pattern": "(?-i:^codex/pfc/[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+/\\z)"
+        },
+        "default_branch_write": {
+          "type": "boolean",
+          "enum": [
+            false
+          ]
+        }
+      },
+      "required": [
+        "identity_algorithm",
+        "repository_identity",
+        "authorized_base_checkpoint_sha",
+        "source_branch",
+        "write_branch_policy",
+        "write_branch_namespace",
+        "default_branch_write"
+      ],
+      "additionalProperties": false
+    },
+    "paths": {
+      "type": "object",
+      "properties": {
+        "hash_algorithm": {
+          "type": "string",
+          "enum": [
+            "PFC_REPO_PATH_SET_SHA256_V1"
+          ]
+        },
+        "writable_paths_hash": {
+          "type": "string",
+          "pattern": "(?-i:^[0-9a-f]{64}\\z)"
+        },
+        "forbidden_paths_hash": {
+          "type": "string",
+          "pattern": "(?-i:^[0-9a-f]{64}\\z)"
+        }
+      },
+      "required": [
+        "hash_algorithm",
+        "writable_paths_hash",
+        "forbidden_paths_hash"
+      ],
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "object",
+      "properties": {
+        "local_commit": {
+          "type": "boolean"
+        },
+        "existing_dependency_use": {
+          "type": "boolean"
+        },
+        "planned_dependency_install": {
+          "type": "boolean"
+        },
+        "non_destructive_migration": {
+          "type": "boolean"
+        },
+        "automatic_repair": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "local_commit",
+        "existing_dependency_use",
+        "planned_dependency_install",
+        "non_destructive_migration",
+        "automatic_repair"
+      ],
+      "additionalProperties": false
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_wave_size": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        },
+        "max_builder_code_repair_attempts": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "max_auto_rework_rounds": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2
+          ]
+        },
+        "max_candidate_revisions": {
+          "type": "integer",
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "max_consecutive_blocked_milestones": {
+          "type": "integer",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "required": [
+        "max_wave_size",
+        "max_builder_code_repair_attempts",
+        "max_auto_rework_rounds",
+        "max_candidate_revisions",
+        "max_consecutive_blocked_milestones"
+      ],
+      "additionalProperties": false
+    },
+    "forbidden": {
+      "type": "object",
+      "properties": {
+        "push": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "merge": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "release": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "deploy": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "destructive_migration": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "administrator_action": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "paid_action": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        },
+        "cross_project_write": {
+          "type": "boolean",
+          "enum": [
+            true
+          ]
+        }
+      },
+      "required": [
+        "push",
+        "merge",
+        "release",
+        "deploy",
+        "destructive_migration",
+        "administrator_action",
+        "paid_action",
+        "cross_project_write"
+      ],
+      "additionalProperties": false
+    },
+    "approval": {
+      "type": "object",
+      "properties": {
+        "approved_by": {
+          "type": "string",
+          "enum": [
+            "USER"
+          ]
+        },
+        "approved_at": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z\\z"
+        },
+        "source_decision_id": {
+          "type": "string",
+          "pattern": "(?-i:^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\\z)"
+        }
+      },
+      "required": [
+        "approved_by",
+        "approved_at",
+        "source_decision_id"
+      ],
+      "additionalProperties": false
+    },
+    "invalidation_triggers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "CONTRACT_CHANGE",
+          "AUTHORIZED_SCOPE_EXHAUSTED",
+          "STOP_GATE_REACHED",
+          "BASELINE_DRIFT",
+          "BRANCH_CHANGE",
+          "UNKNOWN_DIRTY_WORKTREE",
+          "USER_PAUSE",
+          "HARD_BLOCKER",
+          "GOAL_CHANGE"
+        ]
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "authorization_id",
+    "authorization_status",
+    "execution_policy",
+    "invocation_mode",
+    "goal",
+    "scope",
+    "repository",
+    "paths",
+    "permissions",
+    "limits",
+    "forbidden",
+    "approval",
+    "invalidation_triggers"
+  ],
+  "additionalProperties": false
+}
