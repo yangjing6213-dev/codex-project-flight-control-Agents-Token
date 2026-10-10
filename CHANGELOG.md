@@ -8,7 +8,7 @@
 - Added explicit `START CONTINUOUS_MODE` and `RESUME CONTINUOUS_MODE` execution policy, bounded Authorization and sequential Waves, two task-identity gates, risk-tier validation, recovery and hard-stop contracts. The four top-level modes and default pause behavior remain.
 - Formal scenario fixtures now pin 41 actual product inputs to the source Candidate and require independently started Runner-managed Builder/Verifier processes. The 35 attempts per phase count top-level runs only; separately started roles add usage without a platform-enforced cumulative cap and require explicit authorization. Invalid formal attempts remain invalid.
 
-- Corrected Runner handoff identity, exact Verifier report SHA binding, pre-dispatch checks and fail-closed error handling. The October 7 diagnostic completed a model response with no transport-error events in that sample, but Windows restricted-command startup failed before role dispatch; the underlying cause remains unconfirmed. The installed CLI subsequently updated, requiring a new explicitly accepted executable for further live runs.
+- Corrected Runner handoff identity, exact Verifier report SHA binding, pre-dispatch checks and fail-closed error handling. The October 10 minimal startup check subsequently completed two real commands on the accepted current CLI. The following role diagnostic stopped on connection timeout/fallback errors before any role began. Local launch comparison found inconsistent propagation of connection settings; a new local launch copy passed 24 synthetic and ordinary-process checks without changing the frozen evaluation or its error-stop rules. One newly authorized diagnostic then completed a normal turn with no native errors, but returned BLOCKED with no command or role dispatch. Full role execution remains unverified. The prior Windows failure, timeout diagnostic and all invalid samples remain preserved.
 - Fixed the disposable Windows smoke recovery fixture overwriting its starting-version proof; the original failure is retained. The corrected eight-proof local workflow passed without model calls, product gate changes or frozen evaluation changes.
 
 ### Implemented
@@ -25,6 +25,7 @@
 ### Runtime Blocked
 
 - Blocker `PFC-UPSTREAM-001`: native Windows Codex deny-read permission enforcement was not verified. The valid local probe result reported readable Evidence and External roots despite the selected elevated profile. Related open reports are `openai/codex#42184` and `openai/codex#31265`; their similarity is recorded without claiming official confirmation.
+- A new October 10 zero-model dummy protection probe observed 28 matching checks, one unclassified provider-path error and two unexecuted junction checks. The user-waived new-file creation case was excluded, not passed. The one-shot probe stopped without retry; protection remains PARTIAL.
 - Controlled RED/GREEN, Core Efficiency, and Stable Release gates remain blocked. The current Permission Profile must not be used as a confidentiality boundary for sensitive files.
 
 ### Not Yet Proven

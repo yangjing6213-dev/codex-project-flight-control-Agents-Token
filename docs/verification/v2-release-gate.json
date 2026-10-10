@@ -22,8 +22,8 @@
     },
     "green": "NOT_RUN",
     "windows_smoke": "PASS_DISPOSABLE_LOCAL_WORKFLOW_ONLY",
-    "latest_diagnostic_error_category": "SANDBOX_PROVISIONING_FAILURE; PROCESS_CREATION_FAILURE",
-    "network_root_cause": "Zero native transport-error events in the latest completed diagnostic only; general connection reliability and the sole historical timeout cause remain unverified.",
+    "latest_diagnostic_error_category": "NO_NATIVE_ERROR; MODEL_BLOCKED_WITHOUT_REQUIRED_ROLE_HANDOFF",
+    "network_root_cause": "Prior timeout cause is not fully established. The single new proxy-aligned run returned normally without native errors; no general network reliability claim.",
     "role_execution": "Runner starts Builder and Verifier separately; Codex built-in agents disabled",
     "lifecycle_source": "Runner records; not native Codex child events",
     "maximum_role_tasks_per_attempt": 13,
@@ -35,7 +35,7 @@
     "local_checks": "Historical October 6 batch: 26/26 local processes PASS at its bound source inventory, synthetic model transport only. October 10 smoke and affected checks are recorded separately; neither proves native Windows file isolation or live model acceptance.",
     "local_repair_receipt_sha256": "bbee78c4e4f0b22a16bc1327ba951ec959406bafdedae9493934c57455ca47e6",
     "evidence_source": "docs/exec-plans/active/project-flight-control-v2-continuous-mode.md",
-    "latest_diagnostic_root_cause": "Initial model response completed on 2026-10-07; the sole command attempt failed with exit -1 before role dispatch. Underlying Windows provisioning cause NOT_CONFIRMED.",
+    "latest_diagnostic_root_cause": "Structured model status BLOCKED with no commands or role dispatch caused the required-handoff gate to stop. Why execution was declined remains unestablished from permitted machine-only fields.",
     "base_before_current_checkpoint": "7ad957e4de5a9822e0647bf56b07650788db4d83",
     "independent_fix_review": {
       "scope": "Current local Runner, sample guard and directly related synthetic tests; not stable release acceptance",
@@ -53,15 +53,63 @@
       },
       "model_calls": 0
     },
-    "latest_diagnostic_receipt_sha256": "20dfe0c9f188102d0a22f54f28439f37c075ac2eefa7bee607434c2f791f44de",
+    "latest_diagnostic_receipt_sha256": "eec1aca944f1eb894400166fef1409f2183634bf6958fd4e54e5bee778262914",
     "installed_cli_metadata": {
       "checked_at": "2026-10-10",
       "version": "codex-cli 0.162.0-alpha.17.2",
       "executable_sha256": "d13914ced6c7af174d8d638db938284231227312104b06a25e9608c632a7daec",
       "previous_approved_executable_present": false,
-      "live_run_version_drift_accepted": false,
+      "live_run_version_drift_accepted": true,
       "model_calls": 0,
-      "scope": "local version/help only; not a live diagnostic or sandbox acceptance"
+      "scope": "Accepted and used in the separately authorized October 10 diagnostics; this metadata entry is not an additional model call."
+    },
+    "startup_diagnostic": {
+      "status": "PASS_BOUNDED_TWO_COMMAND_CHECK_ONLY",
+      "commands_completed": 2,
+      "formal_samples": 0,
+      "summary_sha256": "057792e766ad3c7bfc9c4651cdb78f04889e6c15fd934c1e83d029a01c35df89"
+    },
+    "latest_role_diagnostic": {
+      "status": "STOPPED",
+      "model_status": "BLOCKED",
+      "top_level_attempts": 1,
+      "process_starts": 1,
+      "role_starts": 0,
+      "resumptions": 0,
+      "command_events": 0,
+      "error_events": 0,
+      "completed_error_items": 0,
+      "native_turn_completed": true,
+      "formal_samples": 0,
+      "reason": "REQUIRED_ROLE_HANDOFF_NOT_OBSERVED",
+      "underlying_execution_blocker": "NOT_ESTABLISHED_FROM_PERMITTED_MACHINE_ONLY_FIELDS",
+      "raw_sha256": "d2777cb806fdd040f80297b42912d846661fadb614765527eaa68ebc9a7a49ac",
+      "normalized_sha256": "1bf2466debdc803f3417bce8c69c92a38ab4078084248adf1d5f53badfb46c75",
+      "safe_analysis_sha256": "22de6b8823aa00f4bcbb274dc266740dffdb7b4f631c7fd3e034aabb74c66261"
+    },
+    "local_launcher_repair": {
+      "status": "PASS_LOCAL_PROPAGATION_ONLY",
+      "checks": 24,
+      "model_calls": 0,
+      "network_requests": 0,
+      "tests_sha256": "c59b62e30975a673663f9b5cbb007ec4cc2156ac8ecd188377040073ddfcb306",
+      "library_sha256": "c9f1da8fe845cfe3c186d2104673abf4a818feb7a5584f3104879ed593a13bcf",
+      "launcher_sha256": "0de9ccaec3863ee971b9770e5638245781697b803c727dfd452c68642ef25f13",
+      "live_transport_recovery": "ONE_NORMAL_TURN_WITHOUT_NATIVE_ERRORS; FULL_ROLE_EXECUTION_NOT_VERIFIED",
+      "independent_review": "PASS; SPEC_COMPLIANCE and QUALITY, Critical 0 / Important 0 / Minor 0; local preparation only",
+      "scope": "Ignored local launch preparation; existing proxy passed to the new child only. Product Runner, frozen controls, old evidence and settings unchanged."
+    },
+    "prior_timeout_role_diagnostic": {
+      "status": "STOPPED",
+      "top_level_attempts": 1,
+      "process_starts": 1,
+      "role_starts": 0,
+      "resumptions": 0,
+      "command_events": 0,
+      "error_events": 4,
+      "completed_error_items": 1,
+      "formal_samples": 0,
+      "raw_sha256": "fb661a8be0f23f933f95cc7cfd816802cda7f7bd31a8ae27df15eec0665a5306"
     }
   },
   "deterministic_evidence": {
@@ -187,7 +235,7 @@
     },
     "CONTINUOUS_MODE_MODEL_GATE": {
       "status": "PARTIAL",
-      "detail": "Formal RED remains 2 attempted / 0 valid / 2 invalid; 35 valid RED samples still required. GREEN is NOT_RUN. The latest live diagnostic completed a model turn but command startup failed before role dispatch. The installed CLI has changed since that diagnostic; new bounded live-run authorization is required. Diagnostics and invalid runs are not formal samples.",
+      "detail": "Formal RED remains 2 attempted / 0 valid / 2 invalid; 35 valid RED and 35 GREEN remain required. October 10 startup completed two commands. After a prior timeout, the single newly authorized proxy-aligned diagnostic returned normally without native errors but BLOCKED with no command/role dispatch. Missing required handoff evidence is not a valid sample. No retry; diagnose the execution blocker before further authorized live runs.",
       "evidence": [
         "current_task12.evidence_source"
       ]
@@ -267,10 +315,26 @@
   "upstream_blocker": {
     "id": "PFC-UPSTREAM-001",
     "status": "UNRESOLVED",
-    "detail": "Native Windows Codex deny-read permission enforcement has not been verified; do not use the current profile for confidential-read isolation.",
-    "historical_evidence": "docs/verification/v1-release-gate.json"
+    "detail": "Native Windows protection remains PARTIAL: October 10 dummy probe matched 28 operations, stopped on one unclassified provider-path error and left two junction checks unrun. New-file creation was separately WAIVED. Do not use this as a confidential-read isolation guarantee.",
+    "historical_evidence": "docs/verification/v1-release-gate.json",
+    "latest_dummy_probe": {
+      "status": "INCONCLUSIVE",
+      "native_attempts": 1,
+      "model_calls": 0,
+      "retained_checks": 31,
+      "matching_checks": 28,
+      "unclassified_errors": 1,
+      "not_run": 2,
+      "unexpected_allowed": 0,
+      "stop_id": "path_provider",
+      "waived": "evidence_create; not executed or counted as PASS",
+      "protected_dummy_files_unchanged": true,
+      "retry": false,
+      "result_sha256": "0cd13fbc002411866b25fce5c82ea15840cfdbb7c6ca733aed5a012c417dfc5e",
+      "scope": "Fictional temporary files only; no real user file or full runtime guarantee"
+    }
   },
-  "next_gate": "Tasks 12-14 remain incomplete. Local workflow smoke and source/documentation publication are in scope of the current human request. Next live step requires explicit acceptance of the current CLI fingerprint and a fresh bounded role diagnostic; no previous stopped authorization may be replayed. Formal RED/GREEN remain separately gated.",
+  "next_gate": "Fresh bounded role diagnostic using the locally verified launcher must pass before 35 RED and 35 GREEN with manual and independent review. Stopped budgets stay stopped. File-read protection and final acceptance remain open; the eight-proof disposable Windows workflow need not be repeated on unchanged code.",
   "evidence_policy": {
     "raw_logs_in_repository": false,
     "credentials_in_repository": false,
