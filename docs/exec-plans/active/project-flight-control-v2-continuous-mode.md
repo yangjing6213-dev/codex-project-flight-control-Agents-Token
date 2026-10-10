@@ -590,3 +590,129 @@ This source-update checkpoint completed **26/26 local check processes**, each wi
 
 
 Remote scope: the current human request authorizes normal GitHub project/README updates. Use one new ordinary commit on main based on the observed remote main, with GitHub noreply author/committer identity scoped to that process. Earlier development commits remain local; do not publish a development-history branch or change Git/account settings. Frozen formal evaluation still requires the retained local version history; a public clone alone is insufficient. No merge, rebase, force, tag, release or deployment. Old raw outputs and the protected task-3-report.md stay local and excluded. Earlier missing-draft notes resulted from checking the run folder rather than the preparation folder; no original authorization record was deleted.
+
+## Task 12 最小连接复测及正式 Runner 启动核对（2026-10-06）
+
+- 授权 `PFC-V2-T12-CONNECTION-RECHECK-20261006-R1` 的预检读取修复通过虚构输出验证后，恢复了剩余的 1 次连接调用；本次实际结果为 `PASS`，0 次重试、0 个角色任务、0 次工具调用。使用 Codex 0.160.1、`gpt-5.6-terra`、`medium`、`read-only`；完成固定回应和原生结束事件。该调用只证明基本连接可用，不是 Task 12 的有效样本。可靠用量字段记录为输入 14,133、缓存输入 2,816、输出 8、推理输出 0。原始及归一化证据仍在被忽略的 `.pfc-eval-results/`；结果回执 SHA-256：`f85c51ffcd532733901f0dd2c6620a90e0d620845d99b8c07a1960ca707f5fed`。
+- 零模型只读核对显示：冻结控制 SHA-256 为 `d9214dff4149a8f7c993cc775609ef8ebf351c86703900403febe45d4b7de6d6`，Runner SHA-256 为 `f886cf6b7654c097d70ca769b45d159d3a868d808a80924f46355cc9f7b8a5ac`，运行入口 SHA-256 为 `955be905893b5070d2a13dd389981659a973f155183703cac9d392d1d75a96ee`；七个场景清单的 Runner 与清单哈希绑定均匹配。
+- 启动设置并非完全相同：连接复测没有写文件权限、没有 Builder/Verifier 角色任务；正式 RED 则会在临时评估副本中使用 `workspace-write`，由 Runner 依次启动 Builder、Verifier，并接续 Goalkeeper 会话。模型、推理强度和 Windows 后端设置一致。现有代码每次正式尝试最多 13 个 Runner 角色任务和 13 次会话接续；35 次尝试最多计划 455 个角色上下文，平台没有可强制的整批累计硬上限。此项只做了代码/哈希静态核对，没有再运行测试或模型。
+- 正式 RED 仍为 2 次尝试、0 个有效、2 个无效，仍需 35 个有效样本；GREEN 和 Windows smoke 未运行。基本连接已确认，但 Runner 的真实角色任务、文件修改与结果回传尚未由本次连接复测验证。不得把连接复测记作正式样本；启动正式 RED 或新的角色诊断均需新授权。
+
+## Task 12 Runner 角色诊断启动前停止（2026-10-06）
+
+- 授权 `PFC-V2-T12-ROLE-DIAGNOSTIC-20261006-R1` 的模型、版本、冻结控制及三个代码指纹均匹配；可执行文件与此前连接成功时相同，Windows PowerShell 5.1 可用，结果目录已忽略，未发现重复授权预约或继承的 Git 环境变量。
+- 尚未启动 Runner、Codex 或模型，也未创建本次授权文件。启动前发现明确冲突：Task 12 Runner 会在本次随机临时夹具内执行一次 `git commit`，用于建立冻结基线；但这份授权写明 `COMMIT: NOT_AUTHORIZED`。为尊重该限制，诊断没有开始。需要用户明确是否只允许这一次临时夹具提交，同时继续禁止项目仓库提交及所有远程操作。
+- 本次授权未被使用；正式 RED 仍为 2 次尝试、0 个有效、2 个无效，仍需 35 个有效样本。
+- 用户随后仅明确允许 Runner 在该临时夹具内建立一次基线提交。进一步只读核对发现 Builder 角色规则写明“只有获授权时才提交 Candidate”，冻结控制允许最多 3 个 Candidate 修订；本次范围没有明确批准这些 Candidate 提交。为避免让角色在未获授权时提交，也避免明知结果可能因此无法完成仍消耗诊断调用，继续停止。仍为 0 个 Codex/模型调用、0 个角色任务；尚未创建本次授权文件。项目仓库提交未执行；授权结构化字段仍标为不允许。
+
+## Task 12 CM-01 角色诊断启动失败（2026-10-06）
+
+- 本次仅启动了一次 Runner；结果为 `STOPPED`，`top_level_attempts=0`、`raw_process_records_observed=0`、`error_event_count=0`、`runner_exit_code=1`。未形成模型评估样本；没有重试。正式 RED 仍为 2 次尝试、0 个有效、2 个无效，仍需 35 个有效样本。
+- 本地错误记录只支持确认“访问被拒绝”（PowerShell 错误类别 `UnauthorizedAccess`）。哈希预检此前通过；现有摘要没有指出具体哪一步或哪个临时对象被拒，也没有证据可把原因归为网络或登录故障，因此不推测。
+- 本次结果指纹：摘要 `66fc2d2994050d53b0f6bd0e319cf26130aed7816f45113fa53c1d801fc9efd5`；错误输出 `2714ed3668faed230ba35d34da5c09f24698f860187b46f3628c4370df7daa3f`。原始启动记录保留在被忽略的 `.pfc-eval-results/`。
+- 记录没有说明临时夹具的基线提交是否已建立，故不判断该一次性授权是否已消耗。未修改业务代码、未提交项目仓库、未执行远程操作；需另行授权零模型只读取证后才能定位具体拒绝点。Token Usage: NOT_AVAILABLE。
+## Task 12 角色诊断启动错误只读取证（2026-10-06）
+
+- 错误摘要的安全编号为 `UnauthorizedAccess`，即本机操作被拒绝。结果记录为 `STOPPED`，顶层评测尝试 0、原始进程记录 0、错误事件 0；没有记录到模型或角色调用。错误摘要未显示网络、登录、执行策略或哈希不符信号。
+- 只读代码核对确认：运行器先创建临时夹具和 Git 基线，再进入角色调用；临时夹具创建失败时会尝试删除该夹具。运行时间对应的本机临时目录中没有找到仍保留的匹配夹具，因此无法确认失败前是否已经建立基线提交；不把一次性临时提交授权记为已用或未用。
+- 具体被拒绝的操作仍未查明；不推测、不重试。未改代码、设置或旧证据，未运行测试、Codex、模型或评估，未提交项目仓库，未执行远程操作。
+- 证据指纹：启动结果 `66fc2d2994050d53b0f6bd0e319cf26130aed7816f45113fa53c1d801fc9efd5`；错误输出 `2714ed3668faed230ba35d34da5c09f24698f860187b46f3628c4370df7daa3f`；运行入口 `955be905893b5070d2a13dd389981659a973f155183703cac9d392d1d75a96ee`；Runner `f886cf6b7654c097d70ca769b45d159d3a868d808a80924f46355cc9f7b8a5ac`。Token Usage: NOT_AVAILABLE。
+
+## Task 12 临时启动方式修正与零模型验证（2026-10-06）
+
+- 更正此前“拒绝操作未知、临时基线提交状态未知”的记录：旧错误为代码页 936 的中文输出，准确读取后明确指出入口 run-evals.ps1 因禁止运行脚本而无法加载，错误为 SecurityError / UnauthorizedAccess。该失败子进程没有进入脚本正文，因此没有创建临时夹具或基线提交，也没有调用 Codex。
+- Windows PowerShell 5.1 宿主只读检查确认 MachinePolicy/UserPolicy 未设置，全部策略范围均 Undefined，但默认有效策略为 Restricted。旧临时启动缺少仅进程 -ExecutionPolicy Bypass，这是本次故障原因。
+- 虚构控制脚本重现相同安全拒绝。早期本地检查器未识别换行后的帮助标识而停下；原控制记录保留。长执行申请被拒绝后没有执行后续步骤；用户确认未看到弹窗，并明确允许缩短请求后，唯一修正启动检查实际 exit 0，版本 5.1.26100.9444，固定标记和带空格参数正确，Get-FileHash 与虚构输入指纹吻合。
+- 子进程使用 Bypass；退出后宿主全部策略范围仍为 Undefined、默认有效策略仍为 Restricted，永久设置未改变。仅修正外层临时启动参数，Runner、入口代码及冻结文件未改，无需重绑冻结哈希。验证摘要指纹：b3f56154b16f881a4b4dc53841288cb2b5ac878793dba77d32131226721fc019。归一化记录和控制输出保留在被忽略的本地结果目录，独立审查待补记。
+- 静态审查发现真实 CM-01 单次诊断会先创建一个预检夹具，再创建一个实际诊断夹具，共最多两次临时基线提交。旧授权的一次提交预算不足以覆盖两步，未静默扩大；新 R2 草稿明确最多两个随机临时夹具各提交一次，另仅允许实际夹具最多三次冻结任务所需 Candidate 提交。草稿尚未获准，未重跑旧诊断或启动新模型。
+- 本轮 Codex/模型调用 0、项目提交 0、远程操作 0；正式 RED 保持 2 attempted / 0 valid / 2 invalid，仍需 35 valid。Task 12 保持 PARTIAL；真实角色诊断、正式 RED/GREEN、Windows 检查与最终验收仍未完成。Token Usage: NOT_AVAILABLE。
+- 本次同一位独立只读审查者完成实际归一化记录、虚构脚本、启动配置和新授权草稿审查：SPEC_COMPLIANCE PASS，QUALITY PASS，Critical 0，Important 0。范围仅为本地启动验证；真实角色诊断和产品评估未运行，Task 12 仍为 PARTIAL。独立审查指纹：bc96348438e12e7a83c05b35261001573353ac62bc8b33f873c34a72e68d8d6e。初始验证摘要中的 PENDING 表示其生成时的状态，最终结论保存在单独的审查回执，没有覆盖原始验证摘要。
+- 本地记录辅助脚本曾因 UTF-8 无 BOM 在原生 PowerShell 5.1 解析失败；补充编码标记后原生解析错误 0、记录执行 exit 0。该问题只涉及本地记录保存，未进入产品或评估流程；不得当作产品测试证据。
+## Task 12 single role diagnostic R2 (2026-10-06)
+
+- Human approval: PFC-V2-T12-ROLE-DIAGNOSTIC-20261006-R2; one CM-01 diagnostic, no retry/replacement, no formal RED/GREEN, no project commit or remote action. The authorization covered two random temporary baseline fixtures and up to three frozen-task Candidate commits in the actual fixture only.
+- Preflight PASS: native Windows PowerShell 5.1; MachinePolicy/UserPolicy Undefined; process-only Bypass; Codex 0.160.1 and approved executable fingerprint; existing ChatGPT login confirmed; all 46 frozen artifacts and seven manifests matched. Independent review PASS applies to static startup boundaries only.
+- Actual diagnostic FAIL: 1 attempted / 0 valid / 1 invalid. One native model-process record, zero Runner Builder/Verifier processes and zero Goalkeeper resumptions were observed. Two separate non-model CLI metadata checks preceded the run. No Runner retry or replacement was performed.
+- Stop category INVALID_TURN_FAILED: the initial context recorded four native error events and one completed error item, all classified CONNECTION_OR_TRANSPORT. It also recorded thread.started, turn.started and turn.completed; a completion/usage field does not make an error-bearing sample valid. No command_execution events were observed. The specific connection cause remains NOT_CONFIRMED; do not attribute it to account settings, local network, proxy or server without additional evidence.
+- Reliable native usage from the sole turn.completed.usage: input_tokens 69735; cached_input_tokens 41472; cache_write_input_tokens 0; output_tokens 1501; reasoning_output_tokens 415. Cached input and reasoning output are separate supplied fields, not extra inferred totals.
+- Post-run checks: all 46 artifacts and seven manifests remained unchanged; project HEAD remained 1e25df7a77bd0f0d92ee447b6c2c1def0cfd2012; permanent execution-policy scopes remained Undefined. No product code, frozen condition, personal setting or login credential was modified. Original raw outputs and temporary fixture evidence are retained locally and ignored.
+- Final receipt SHA-256: 5946512f709fcccc6997729340c8cf0537d76420697c955bc7f8e3d8528214dd. Native record SHA-256: 09035ce043438a4a38a7a8ca817164ba4c61c3419bdecc7812d1fb63891582e5. Native event-index SHA-256: 4490729afce01d8d148aaab69b6d1a601152301b2257b947918e617b43583721. Dispatcher normalized SHA-256: 5428e76d0313ed329ba63c23f136a9bcc94591b7eb1cc4de835f2fb931791421. Authorization SHA-256: 2fdadfc4cdf47e3f6ad52852fa639bade6efb4d040ef41d615885fb85002b7b6. No prompts, conversations, commands, error text or personal paths are copied into this ledger.
+- Task 12 remains PARTIAL. Prior formal RED remains 2 attempted / 0 valid / 2 invalid; 35 valid samples are still required. This diagnostic adds no formal sample. Role cooperation, formal RED/GREEN, Windows workflow and final acceptance remain unverified. Further real calls require separate authorization; this authorization is consumed and must not be replayed.
+
+## Task 12 R2 connection failure cause (2026-10-06)
+
+- Follow-up read-only inspection of the uniquely hash-matched R2 native record confirmed the direct cause of the stop: all four transport error events and the completed error item report a request timeout. The single turn completed with an error. No command execution, Builder/Verifier launch or Goalkeeper resumption occurred. The Runner stopped before any role could start.
+- This confirms a communication timeout during the initial Codex request. It does not establish whether the timeout came from the local route, an intermediary, or the service. No DNS, proxy, account, or machine-setting cause is asserted. The short login check succeeded before the run; that check cannot rule out a later request timeout.
+- The corrected event-index match was unique. Current event-index timestamps are recorded in the local diagnosis receipt when present; no raw event text, prompts, conversation, command text, or personal paths were copied into this ledger.
+- Read-only verification again confirmed 46 frozen artifacts and 7 scenario manifests unchanged. Diagnostic receipt SHA-256: 9a6af0a8dba123e800b370cbdf27dbce273965ebf93bb5c0cccfb643f77d51d9. Native record SHA-256: 09035ce043438a4a38a7a8ca817164ba4c61c3419bdecc7812d1fb63891582e5. Event-index SHA-256: 4490729afce01d8d148aaab69b6d1a601152301b2257b947918e617b43583721.
+- R2 remains 1 diagnostic attempt / 0 valid diagnostic samples; it contributes zero formal RED samples. The prior formal RED remains 2 attempted / 0 valid / 2 invalid and still requires 35 valid samples.
+
+## Task 12 role diagnostic R3 (2026-10-06)
+
+- The new human authorization allowed one new CM-01 diagnostic attempt with the same approved model and settings. Preflight again confirmed the existing login, CLI version and executable fingerprint, process-only script allowance, and all 46 frozen artifacts and seven scenario manifests.
+- The single attempt stopped with INVALID_TURN_FAILED. All recorded transport errors and the completed error item were classified as timeouts, matching the R2 run. The request entered one turn but did not start any command execution, Builder/Verifier task or Goalkeeper resumption. There was no Runner retry or replacement. This added zero valid diagnostic samples and zero formal RED samples.
+- Repeating the one-run check reproduced the timeout. The local evidence still cannot distinguish a timeout in the local internet path, an intermediary, or the Codex service. Do not change model instructions, scenario criteria or user settings on this evidence alone.
+- Reliable token usage is preserved from the native completed-turn usage fields in the receipt. All 46 frozen artifacts and seven manifests remain unchanged; the project HEAD remains 1e25df7a77bd0f0d92ee447b6c2c1def0cfd2012. No project code, project commit or remote action was performed.
+- R3 final receipt SHA-256: 2c9eb5662cd469640920a0266b6bcc6f9de3419271ee0c9a752bbc25fd7238eb. Native record SHA-256: 0539cb62f89ec0d070ed31f479c25a64db32e0f50020a821a96198a2ba270fe9. Event-index SHA-256: d3ba5fee1e487867c69f92c97ed4d4a16f55d97c033123a3812907395ed55456. Authorization SHA-256: 610d5115420d335c8c7146892afe415ddd823295e291f54a0193c008c6a825d3. R2 diagnosis receipt SHA-256: 9a6af0a8dba123e800b370cbdf27dbce273965ebf93bb5c0cccfb643f77d51d9. No prompt, conversation, command text, raw error wording, credential or personal path is copied here.
+- Formal RED remains 2 attempted / 0 valid / 2 invalid; 35 valid samples are still required. Task 12 remains PARTIAL. This authorization has been used and cannot be replayed.
+
+## Task 12 repeated-timeout network check R1 (2026-10-06)
+
+- Authorized R2/R3 error records did not identify a unique HTTPS service hostname. No DNS lookup or HTTPS request was made. Connectivity is UNKNOWN; no public HTTP status code is available. No retry was performed.
+
+
+## 2026-10-06 Endpoint lookup stopped
+Authorization: PFC-V2-T12-TIMEOUT-ENDPOINT-CHECK-20261006-R1
+Status: STOPPED_BEFORE_NETWORK_CHECK
+Scope: Read only the previously confirmed Codex executable.
+Executable SHA-256: 3b8f6e33caa75f232558a3cf76ff9b87bb5ef6dbcf4996372f24e55c78b1b916
+Finding: The executable contains multiple public service host candidates; no unique host can be tied to the R2/R3 timeout evidence without guessing.
+DNS: NOT_RUN. HTTPS: NOT_RUN. No network request was sent; no status code is available.
+Model calls: 0. Codex conversations: 0. Evaluations: 0.
+
+
+## Task 12 transport diagnosis correction and local launch fix (2026-10-06)
+
+- Current user request: analyze and resolve the problem. This work performed local diagnosis, fake-process verification and one independent read-only review; no Codex/model evaluation or real role run was started.
+- Correction to the earlier timeout summary: R2/R3 each contain WebSocket request timeouts, an explicit fallback-to-HTTPS notice, later structured agent messages and a completed turn. They were not wholly without model responses. The unchanged Runner correctly refuses to dispatch roles after any error under the authorized stop rule; old invalid samples remain invalid.
+- A concrete startup difference was confirmed: the successful connection check explicitly used the existing child-only proxy helper, whereas the subsequent R2/R3 outer launchers omitted it. With a clean synthetic parent environment the old two-generation chain lacked all four required HTTP/HTTPS proxy fields (2/6 checks passed); using the unchanged helper passed 6/6, without altering the parent's environment. This establishes the propagation defect, not the sole historical network cause: actual R2/R3 proxy choice was not recorded and system fallback cannot be excluded.
+- A new unexecuted local launcher reuses the hash-bound successful helper for its PowerShell dispatcher. The existing Runner and descendants inherit its environment. It retains per-process script policy checks, fresh-authorization/preflight requirements, one-attempt reservation, no-retry limits, frozen conditions and all result/error gates. Existing system proxy lookup is deferred until separately authorized execution. No private settings or credentials were read by this repair.
+- Local Windows PowerShell 5.1 checks: fixed chain 6/6 PASS, syntax 3 files PASS; frozen artifacts 46 and scenario manifests 7 unchanged. Independent read-only review: SPEC_COMPLIANCE PASS, QUALITY PASS, Critical 0, Important 0. One Minor verification boundary remains: fake tests do not dynamically exercise actual system-proxy lookup or Codex connectivity; static wiring review passed. Review scope is this local startup change, not model connectivity or release acceptance.
+- Local evidence directory: .pfc-eval-results/role-proxy-handoff-fix-20261006-R1/. Launcher SHA-256: 7df2f409ee8d97445d3dabd64c128d86f73f2a1f54fd0ef3f2182766f4080dbf. Diagnosis SHA-256: eca26bd2568d0e86e72461e829a168352bda0ea2e1b48528c02d4d4d738a25eb. Review SHA-256: 1c33f9343494cdc2aca57d384275dc4e15735577bddb4575fc11c5ad33e87cee. All new local diagnostic files remain ignored; previous raw evidence is preserved.
+- Next draft: PFC-V2-T12-PROXY-ALIGNED-ROLE-DIAGNOSTIC-20261006-R1, DRAFT_NOT_APPROVED. One CM-01 top-level diagnostic, at most 13 role processes plus 13 resumptions (27 model processes total), no retry, no formal RED/GREEN, no Windows smoke, no project commit or remote action. New-model authorization is still required; no old authorization may be replayed.
+- Task 12 remains PARTIAL. Formal RED remains 2 attempted / 0 valid / 2 invalid; 35 valid samples still required. Actual role cooperation and end-to-end connection recovery are NOT_RUN in this repair. Existing process-control hashes remain unchanged.
+
+## Task 12 proxy-aligned role diagnostic completed (2026-10-07)
+
+- Human approval PFC-V2-T12-PROXY-ALIGNED-ROLE-DIAGNOSTIC-20261006-R1 was executed once and is consumed. One CM-01 diagnostic attempt / zero valid / one invalid; no retry or replacement. This receipt supersedes the earlier DRAFT_NOT_APPROVED label for this authorization only.
+- Preflight PASS: existing ChatGPT login, Codex 0.160.1 and executable fingerprint, Windows PowerShell 5.1, MachinePolicy/UserPolicy Undefined, process-only Bypass, 46 frozen artifacts and seven manifests matched. The approved child-only proxy launch helper was used without changing permanent settings or credentials.
+- The initial model turn received structured responses and completed. This run recorded zero native transport-error events; the former timeout did not recur in this one sample. This does not prove general connection reliability or identify the sole historical timeout cause.
+- The sole command_execution item was a failed attempt, exit_code -1: safe error categories SANDBOX_PROVISIONING_FAILURE and PROCESS_CREATION_FAILURE. No command successfully ran. The underlying Windows provisioning cause is NOT_CONFIRMED. Builder/Verifier tasks 0; Goalkeeper resumptions 0; model process invocations 1; separate non-model CLI metadata checks 2.
+- The unchanged evidence gate at evals/run-evals.ps1:1308 stopped the run because required Runner-owned handoff evidence was unavailable. Runner lifecycle NO_CHILD_PROCESSES; trace NO_DISPATCH_OBSERVED; the fixture remains retained. Correctness NOT_RUN. No error gate was relaxed and no sample was reclassified valid.
+- Reliable usage from the sole native turn.completed.usage: input_tokens 55328; cached_input_tokens 33280; cache_write_input_tokens 0; output_tokens 1865; reasoning_output_tokens 699. Components were not double-counted or estimated.
+- Post-run verification PASS: all 46 artifacts, seven manifests and approved launcher/helper fingerprints unchanged; project HEAD 1e25df7a77bd0f0d92ee447b6c2c1def0cfd2012; git diff --check passed before this appended receipt. No product-code or frozen-control edits, project commit, remote action, permanent setting change or credential change. Existing raw evidence was preserved.
+- Receipt SHA-256 20dfe0c9f188102d0a22f54f28439f37c075ac2eefa7bee607434c2f791f44de; native record 02c030ee40ae19de4c704736ce7a1010a2af1c66703600521ab00691a8d0ec2b; normalized eb38c4c12fbb62371152e4c841d7547690b74eb4a57a769cb34db410eeed9e60; preflight a13c6c2fbe5e21c9ccceffaf52a878b6ac313f19f2f53c17b153e1297fd4619a; authorization 08baf62a5151002f882a78a96efef04a0485ab4c8f31fe086d055fe72f96c172. Receipt and raw evidence remain under local ignored .pfc-eval-results/. No prompt, dialogue, command text, raw error or personal path is reproduced here.
+- Task 12 remains PARTIAL. Formal RED stays 2 attempted / 0 valid / 2 invalid; 35 valid samples still required. Recommend a separate zero-model, read-only investigation of Windows sandbox startup before any new diagnostic call. This one-run authorization must not be replayed.
+
+## Local closeout and public progress update (2026-10-10)
+
+- Current human request authorizes completing remaining local work and updating the existing GitHub main branch. Reuse this plan and preserve previous evidence. Scope now: the registered disposable Windows workflow smoke, current status documentation, independent read-only review, publication checks and one normal main-only source/documentation update. No force, merge, rebase, stable release, deployment, permanent settings change or user-profile installation.
+- Formal RED remains 2 attempted / 0 valid / 2 invalid; GREEN remains NOT_RUN. No new live model evaluation is included in this local closeout. A new bounded authorization must accept the actual executable, current frozen controls and role/resumption budgets before further model runs. No stopped authorization is replayed.
+- The previously approved Codex 0.160.1 executable is no longer present. Read-only metadata checks found codex-cli 0.162.0-alpha.17.2, executable SHA-256 d13914ced6c7af174d8d638db938284231227312104b06a25e9608c632a7daec. Version/help checks only; model calls 0. This is version drift, not proof that the Windows startup fault has been repaired.
+- The latest completed live diagnostic is the 2026-10-07 proxy-aligned run recorded above. Its model response completed, but command startup failed. Windows provisioning root cause remains NOT_CONFIRMED. Full file-read isolation remains UNRESOLVED; only the deny-new-file requirement was previously waived by the human user.
+- Native Windows PowerShell 5.1 policy inventory has MachinePolicy and UserPolicy Undefined. Process-only Bypass is permitted for the registered local smoke; permanent settings remain unchanged. The smoke creates and cleans only its owner-marked random temporary fixture under the reviewed boundary checks. It does not invoke Codex, a model, the Windows Codex sandbox backend or an independent runtime Agent.
+- Publication baseline: GitHub main 2d69bfafb13dc2aae0ba57c3a32a1c06b9e99e56; reuse the matching clean publication checkout. Target yangjing6213-dev/codex-project-flight-control-Agents-Token-, public, main only. Keep development history, raw results, credentials and the historical task-3-report.md local. Publication acceptance requires scoped tests, evidence/status consistency, privacy checks, independent review, an ignored PRE-PUBLISH-REPORT and verified normal push.
+- Execution results are pending; this entry does not mark Tasks 12-14 complete or a stable release ready.
+
+### Local Windows workflow result and minimal fix
+
+- Registered Windows PowerShell 5.1 smoke initially failed: 5 PASS / 1 FAIL / 2 NOT_RUN, exit 1, receipt SHA-256 6af2c278bad19dd7b5d5162694e733ca4fc668eb58c5485596015bf40babbd7e. The failure is preserved. Recovery ancestry assignment replaced the array and removed the observed base-to-base proof; the unchanged identity gate correctly rejected it.
+- Pure fixture diagnosis reproduced BASELINE_DRIFT twice; restoring the missing proof passed twice. No model or Git calls in this reproduction. Result SHA-256 d969fcbd8562efd5c80dbdb7dc03a5db61bdf3a3afbbffe8880c1358b8c5cc97. Earlier unsuccessful diagnostic-script outputs are retained and are not pass evidence.
+- Minimal fix only in evals/scenarios/continuous-mode/WindowsSmoke/scenario.ps1: append recovery ancestry instead of replacing existing observations. Existing assertions and product safety gates remain unchanged. This file is not among the frozen model artifacts or scenario manifests; no frozen model hash was rebound. Source SHA-256 a9d84066ee3ebb3f6fbba55d9d23383677a5c92981deb86e2b7e6065f72f93ef.
+- Corrected registered smoke: 8/8 PASS, exit 0, stderr empty, result SHA-256 79471285859d14b16a214246c731bb277682dffbee4841cce84791fe88e5e665. Actual disposable filesystem/Git/install/update/backup/rollback ran; role review observations are deterministic fixtures. No Codex, model, native sandbox backend, real-profile install, project-repository commit or remote operation in this check. All eight local workflow proofs passed; full Task 14 acceptance remains incomplete.
+- Status documents and both READMEs now report the October 7 failure, October 10 CLI drift and scoped smoke result. Formal RED remains 2 attempted / 0 valid / 2 invalid; Task 13 GREEN NOT_RUN; file-read isolation UNRESOLVED; stable V2 NOT_READY. Further live runs need a fresh bounded authorization accepting the current executable and control hashes.
+
+- October 10 verification: ContinuousMode 302/302 PASS, ContinuousModeModelContract 106/106 PASS, ContinuousContracts 10/10 PASS, StaticPackage 41/41 PASS, Bootstrap 17/17 PASS; three implementation suites plus StaticPackage/Bootstrap on the exact 190-file public snapshot, five successful native Windows PowerShell 5.1 exits 0 and empty stderr. The implementation-root StaticPackage result was 39 PASS / 2 FAIL, exit 1, SHA-256 06a4797622fe33f257e407ca665579e03c8b07d1a5ad89f1735877192d2306d6; its scanner included ignored local audit reports in drive/version checks. This failure is retained. The unchanged StaticPackage passed 41/41 on the exact public files, not by changing assertions or reclassifying the failed run. Synthetic model transport only; real model calls 0. Normalized receipt SHA-256 e5730ffc72e33d688a08e58ff827113a3fd76c9838fc2bbf9235fb02121716b5. The historical 26-process batch retains its original source scope; these are separate scoped receipts.
+
+- Independent closeout_publication_review: SPEC_COMPLIANCE PASS, QUALITY PASS, PUBLICATION_SCOPE_REVIEW PASS; Critical 0, Important 0, three Minor wording issues resolved. Review receipt SHA-256 535baec4055b27ffc7f34a9e5648b1a070b3efc6cfaa44fef35d99a430f03ca6. Scope is the eight changed source/status paths and their scoped local evidence, not final Task 12/13/14 or stable-release approval.
+- GitHub API resolves the originally supplied trailing-hyphen URL to existing canonical repository yangjing6213-dev/codex-project-flight-control-Agents-Token, repository ID 1357769456; main still matches 2d69bfafb13dc2aae0ba57c3a32a1c06b9e99e56. Use this confirmed canonical URL for a normal main push. No repository creation, rename or remote-config change is involved.

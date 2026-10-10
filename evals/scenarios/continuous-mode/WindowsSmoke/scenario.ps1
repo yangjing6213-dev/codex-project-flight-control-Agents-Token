@@ -172,7 +172,8 @@ try {
     foreach($o in @($work.WorkOrder,$work.MilestoneContract,$work.BuilderEcho,$work.Checkpoint)) {$o.expected_builder_start_sha=$checkpoint}
     $work.BuilderEcho.actual_worktree_head=$checkpoint;$work.Observed.actual_worktree_head=$checkpoint;$work.Observed.governance_head_sha=$checkpoint
     $work.Checkpoint.repair_budget.candidate_revisions=1;$work.Observed.candidate_sha=$candidate
-    $work.Observed.ancestry=@(@{ancestor_sha=$base;descendant_sha=$candidate;proven=$true},@{ancestor_sha=$candidate;descendant_sha=$checkpoint;proven=$true});$work.Observed.diffs=$wc.diffs
+    # Keep the observed starting-version proof when adding the recovery history.
+    $work.Observed.ancestry+=@(@{ancestor_sha=$base;descendant_sha=$candidate;proven=$true},@{ancestor_sha=$candidate;descendant_sha=$checkpoint;proven=$true});$work.Observed.diffs=$wc.diffs
     $work.Checkpoint.recovery_manifest.git_status=@(@{path='src/a.ps1';status=' M';original_path='NONE'})
     $work.Checkpoint.recovery_manifest.files=@(@{path='src/a.ps1';sha256=$hash;size_bytes=$size;recovery_copy='a.ps1';classification='ACTIVE'})
     $work.Observed.git_status=@(Clone-CmFixture $work.Checkpoint.recovery_manifest.git_status);$work.Observed.files=@(Clone-CmFixture $work.Checkpoint.recovery_manifest.files)

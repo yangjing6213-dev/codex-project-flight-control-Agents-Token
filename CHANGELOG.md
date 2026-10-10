@@ -4,11 +4,12 @@
 
 ### V2 Development Track
 
-- V2 Continuous Mode `0.2.0-dev.0` remains a development track. The original product Candidate's 23-child/812-row batch has a passing saved-output reconciliation, while its wrapper exited `1` on a StrictSchema parse error. Later evaluation-runner fixes have separate affected and focused checks; specification, quality and Ponytail R3 reviews accepted their implementation scope with no unresolved Critical or Important finding. The old batch is not claimed as a full run on the current Candidate. Formal RED is `PARTIAL` (2 attempted / 0 valid / 2 invalid); GREEN and Windows smoke remain `NOT_RUN`; `PFC-UPSTREAM-001` remains unresolved. See [the V2 verification report](docs/verification/v2-verification-report.md) and [release gates](docs/verification/v2-release-gate.json).
+- V2 Continuous Mode `0.2.0-dev.0` remains a development track. The original product Candidate's 23-child/812-row batch has a passing saved-output reconciliation, while its wrapper exited `1` on a StrictSchema parse error. Later evaluation-runner fixes have separate affected and focused checks; specification, quality and Ponytail R3 reviews accepted their implementation scope with no unresolved Critical or Important finding. The old batch is not claimed as a full run on the current Candidate. Formal RED is `PARTIAL` (2 attempted / 0 valid / 2 invalid); GREEN remains `NOT_RUN`; the October 10 disposable Windows workflow smoke passed 8/8; `PFC-UPSTREAM-001` remains unresolved. See [the V2 verification report](docs/verification/v2-verification-report.md) and [release gates](docs/verification/v2-release-gate.json).
 - Added explicit `START CONTINUOUS_MODE` and `RESUME CONTINUOUS_MODE` execution policy, bounded Authorization and sequential Waves, two task-identity gates, risk-tier validation, recovery and hard-stop contracts. The four top-level modes and default pause behavior remain.
 - Formal scenario fixtures now pin 41 actual product inputs to the source Candidate and require independently started Runner-managed Builder/Verifier processes. The 35 attempts per phase count top-level runs only; separately started roles add usage without a platform-enforced cumulative cap and require explicit authorization. Invalid formal attempts remain invalid.
 
-- Corrected Runner handoff identity, exact Verifier report SHA binding, pre-dispatch checks and fail-closed error handling. Latest connection diagnostic was stopped by the capture script on an optional PowerShell snapshot warning; the prepared process-only fix has not had a new live run.
+- Corrected Runner handoff identity, exact Verifier report SHA binding, pre-dispatch checks and fail-closed error handling. The October 7 diagnostic completed a model response with no transport-error events in that sample, but Windows restricted-command startup failed before role dispatch; the underlying cause remains unconfirmed. The installed CLI subsequently updated, requiring a new explicitly accepted executable for further live runs.
+- Fixed the disposable Windows smoke recovery fixture overwriting its starting-version proof; the original failure is retained. The corrected eight-proof local workflow passed without model calls, product gate changes or frozen evaluation changes.
 
 ### Implemented
 
@@ -28,4 +29,4 @@
 
 ### Not Yet Proven
 
-- Model-backed efficiency improvement, token reduction, Runtime Specialist capability, real Windows smoke, and a stable release remain unproven.
+- Model-backed efficiency improvement, token reduction, Runtime Specialist capability, native Windows sandbox isolation, full live role cooperation, and a stable release remain unproven.

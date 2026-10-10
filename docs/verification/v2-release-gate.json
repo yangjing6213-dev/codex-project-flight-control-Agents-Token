@@ -9,7 +9,7 @@
   "frozen_control_sha256": "d9214dff4149a8f7c993cc775609ef8ebf351c86703900403febe45d4b7de6d6",
   "task11_frozen_control_sha256": "47814f3e9f07bea6378913daf19631499bbbc9acb3f4d0b1c51f02fd0b963a42",
   "current_task12": {
-    "as_of": "2026-10-06",
+    "as_of": "2026-10-10",
     "status": "PARTIAL",
     "worktree_scope": "Current source bytes are bound by the final local-check fingerprint inventory; base commit is not a complete snapshot of this update.",
     "runner_sha256": "f886cf6b7654c097d70ca769b45d159d3a868d808a80924f46355cc9f7b8a5ac",
@@ -21,9 +21,9 @@
       "remaining_valid_required": 35
     },
     "green": "NOT_RUN",
-    "windows_smoke": "NOT_RUN",
-    "latest_diagnostic_error_category": "CAPTURE_STOPPED_ON_OPTIONAL_POWERSHELL_SNAPSHOT_WARNING",
-    "network_root_cause": "Latest diagnostic does not establish network failure; prior network issue not fully verified as resolved.",
+    "windows_smoke": "PASS_DISPOSABLE_LOCAL_WORKFLOW_ONLY",
+    "latest_diagnostic_error_category": "SANDBOX_PROVISIONING_FAILURE; PROCESS_CREATION_FAILURE",
+    "network_root_cause": "Zero native transport-error events in the latest completed diagnostic only; general connection reliability and the sole historical timeout cause remain unverified.",
     "role_execution": "Runner starts Builder and Verifier separately; Codex built-in agents disabled",
     "lifecycle_source": "Runner records; not native Codex child events",
     "maximum_role_tasks_per_attempt": 13,
@@ -32,10 +32,10 @@
     "execution": "serial; no retry or replacement",
     "cumulative_usage_hard_cap_available": false,
     "authorization": "new explicit live-run authorization required; stopped authorizations cannot be reused",
-    "local_checks": "26/26 local check processes PASS with exit 0 in Windows PowerShell 5.1; source fingerprint inventory unchanged; synthetic model transport only; not real Windows isolation or model acceptance",
+    "local_checks": "Historical October 6 batch: 26/26 local processes PASS at its bound source inventory, synthetic model transport only. October 10 smoke and affected checks are recorded separately; neither proves native Windows file isolation or live model acceptance.",
     "local_repair_receipt_sha256": "bbee78c4e4f0b22a16bc1327ba951ec959406bafdedae9493934c57455ca47e6",
     "evidence_source": "docs/exec-plans/active/project-flight-control-v2-continuous-mode.md",
-    "latest_diagnostic_root_cause": "Strict local stderr keyword check killed the process before stdout events; optional shell_snapshot disabled only in a prepared launch copy; live retry NOT_RUN.",
+    "latest_diagnostic_root_cause": "Initial model response completed on 2026-10-07; the sole command attempt failed with exit -1 before role dispatch. Underlying Windows provisioning cause NOT_CONFIRMED.",
     "base_before_current_checkpoint": "7ad957e4de5a9822e0647bf56b07650788db4d83",
     "independent_fix_review": {
       "scope": "Current local Runner, sample guard and directly related synthetic tests; not stable release acceptance",
@@ -52,6 +52,16 @@
         "evals/tests/ContinuousModeModelContract.Tests.ps1": "717b16cf0c72619f6446c1f001bb3e8ab5c4d7f05d857697230c8e7ac590d99f"
       },
       "model_calls": 0
+    },
+    "latest_diagnostic_receipt_sha256": "20dfe0c9f188102d0a22f54f28439f37c075ac2eefa7bee607434c2f791f44de",
+    "installed_cli_metadata": {
+      "checked_at": "2026-10-10",
+      "version": "codex-cli 0.162.0-alpha.17.2",
+      "executable_sha256": "d13914ced6c7af174d8d638db938284231227312104b06a25e9608c632a7daec",
+      "previous_approved_executable_present": false,
+      "live_run_version_drift_accepted": false,
+      "model_calls": 0,
+      "scope": "local version/help only; not a live diagnostic or sandbox acceptance"
     }
   },
   "deterministic_evidence": {
@@ -177,43 +187,50 @@
     },
     "CONTINUOUS_MODE_MODEL_GATE": {
       "status": "PARTIAL",
-      "detail": "Formal RED: 2 attempted, 0 valid, 2 invalid; 35 valid samples still required. GREEN is NOT_RUN. Current Runner-managed roles and Goalkeeper resumptions execute serially without retry under current_task12 limits. The latest diagnostic was prematurely stopped by local warning detection; the prepared optional-feature fix has no new live result. Stopped authorizations cannot be reused; further live runs require separate explicit authorization. Invalid samples and diagnostics are not valid formal evidence.",
+      "detail": "Formal RED remains 2 attempted / 0 valid / 2 invalid; 35 valid RED samples still required. GREEN is NOT_RUN. The latest live diagnostic completed a model turn but command startup failed before role dispatch. The installed CLI has changed since that diagnostic; new bounded live-run authorization is required. Diagnostics and invalid runs are not formal samples.",
       "evidence": [
         "current_task12.evidence_source"
       ]
     },
     "WINDOWS_SMOKE": {
-      "status": "NOT_RUN",
-      "detail": "The real disposable Windows smoke was not executed; PowerShell 5.1 deterministic checks do not establish runtime isolation or recovery.",
-      "evidence": []
+      "status": "PASS",
+      "scope": "Actual disposable Windows filesystem/Git/install/update/rollback with deterministic control observations; no live Agent cooperation or Codex sandbox enforcement proof.",
+      "detail": "Eight registered disposable workflow proofs passed after the minimal smoke-fixture fix. The original 5 PASS / 1 FAIL / 2 NOT_RUN receipt is retained; no model or sandbox backend ran.",
+      "evidence": [
+        "windows_workflow_evidence"
+      ]
     },
     "INSTALLER_UPDATE_ROLLBACK": {
       "status": "PASS",
       "scope": "disposable local fixtures only",
-      "detail": "Installer 16/16 and Doctor 41/41 top-level results passed, including V1-to-V2 update, backup, rollback and managed-file uninstall fixtures. The planned Windows smoke uses a disposable temporary home/state fixture; installation into the user's actual profile is not a V2 acceptance requirement.",
+      "detail": "Installer 16/16 and Doctor 41/41 top-level results passed, including V1-to-V2 update, backup, rollback and managed-file uninstall fixtures. The October 10 Windows workflow smoke additionally passed actual fixture installation, changed-payload update, backup and injected-failure rollback. Installation into the user's actual profile is not a V2 acceptance requirement.",
       "evidence": [
-        "deterministic_evidence"
+        "deterministic_evidence",
+        "windows_workflow_evidence"
       ]
     },
     "TASK_IDENTITY_GATE": {
       "status": "PARTIAL",
-      "detail": "Deterministic identity scenarios passed; authorized real-machine smoke evidence is absent.",
+      "detail": "Local deterministic scenarios and the eight-proof disposable Windows workflow smoke passed in their scoped evidence. Full live Runner-role operation remains unverified; this gate remains PARTIAL.",
       "evidence": [
-        "deterministic_evidence"
+        "current_deterministic_evidence",
+        "windows_workflow_evidence"
       ]
     },
     "RECOVERY_GATE": {
       "status": "PARTIAL",
-      "detail": "Deterministic recovery scenarios passed; authorized real-machine recovery evidence is absent.",
+      "detail": "Local deterministic scenarios and the eight-proof disposable Windows workflow smoke passed in their scoped evidence. Full live Runner-role operation remains unverified; this gate remains PARTIAL.",
       "evidence": [
-        "deterministic_evidence"
+        "current_deterministic_evidence",
+        "windows_workflow_evidence"
       ]
     },
     "HARD_STOP_GATE": {
       "status": "PARTIAL",
-      "detail": "Deterministic stop scenarios passed; authorized real-machine stop evidence is absent.",
+      "detail": "Local deterministic scenarios and the eight-proof disposable Windows workflow smoke passed in their scoped evidence. Full live Runner-role operation remains unverified; this gate remains PARTIAL.",
       "evidence": [
-        "deterministic_evidence"
+        "current_deterministic_evidence",
+        "windows_workflow_evidence"
       ]
     },
     "SPECIALIST_CAPABILITY": {
@@ -245,7 +262,7 @@
   },
   "CORE_RELEASE_GATE": {
     "status": "BLOCKED",
-    "detail": "The formal model gate, Windows smoke, runtime identity/recovery/hard-stop evidence and PFC-UPSTREAM-001 remain open. Implementation review PASS and the separately scoped old full batch, prior affected checks and latest 16 focused checks do not establish release acceptance."
+    "detail": "Formal RED/GREEN, live role operation and PFC-UPSTREAM-001 remain open. The eight-proof disposable Windows workflow passed; it does not establish live model or confidential-read isolation acceptance. Implementation review and local checks do not close these remaining gates."
   },
   "upstream_blocker": {
     "id": "PFC-UPSTREAM-001",
@@ -253,7 +270,7 @@
     "detail": "Native Windows Codex deny-read permission enforcement has not been verified; do not use the current profile for confidential-read isolation.",
     "historical_evidence": "docs/verification/v1-release-gate.json"
   },
-  "next_gate": "TASK12_PARTIAL; local deterministic verification and scoped independent review are complete. Ordinary source and README commits/pushes are authorized by the current user request. A new explicitly bounded diagnostic connection run is required before further live validation. Formal RED/GREEN, Windows smoke and a stable release remain unapproved and unverified.",
+  "next_gate": "Tasks 12-14 remain incomplete. Local workflow smoke and source/documentation publication are in scope of the current human request. Next live step requires explicit acceptance of the current CLI fingerprint and a fresh bounded role diagnostic; no previous stopped authorization may be replayed. Formal RED/GREEN remain separately gated.",
   "evidence_policy": {
     "raw_logs_in_repository": false,
     "credentials_in_repository": false,
@@ -406,5 +423,101 @@
         "Message": "real_process_calls=0; real_resolutions=0; fake_calls=268; formal_samples=0"
       }
     ]
+  },
+  "windows_workflow_evidence": {
+    "status": "PASS",
+    "as_of": "2026-10-10",
+    "suite": "ContinuousModeWindowsSmoke",
+    "proofs": 8,
+    "exit_code": 0,
+    "model_calls": 0,
+    "codex_process_invocations": 0,
+    "result_sha256": "79471285859d14b16a214246c731bb277682dffbee4841cce84791fe88e5e665",
+    "source_sha256": "a9d84066ee3ebb3f6fbba55d9d23383677a5c92981deb86e2b7e6065f72f93ef",
+    "initial_result": {
+      "status": "FAIL",
+      "passed": 5,
+      "failed": 1,
+      "not_run": 2,
+      "result_sha256": "6af2c278bad19dd7b5d5162694e733ca4fc668eb58c5485596015bf40babbd7e"
+    },
+    "root_cause": "Smoke recovery replaced the ancestry array and lost the observed starting-version proof. Two pure fixture reproductions failed BASELINE_DRIFT and passed when that proof was restored.",
+    "reproduction_sha256": "d969fcbd8562efd5c80dbdb7dc03a5db61bdf3a3afbbffe8880c1358b8c5cc97",
+    "fix": "Append recovery ancestry to existing observations; no product identity gate, frozen model condition or pass criterion changed.",
+    "scope": "Actual disposable Windows filesystem/Git/install/update/rollback with deterministic control observations; no live Agent cooperation or Codex sandbox enforcement proof."
+  },
+  "affected_local_verification_20261010": {
+    "status": "PASS",
+    "check_processes": 5,
+    "model_calls": 0,
+    "scope": "Three affected implementation suites and StaticPackage/Bootstrap on the exact public snapshot after the minimal smoke fix. Not a complete fresh 26-process batch or live model acceptance.",
+    "summary_sha256": "e5730ffc72e33d688a08e58ff827113a3fd76c9838fc2bbf9235fb02121716b5",
+    "checks": [
+      {
+        "suite": "ContinuousMode",
+        "scope": "implementation_local_suite",
+        "status": "PASS",
+        "reported_outcomes": 302,
+        "exit_code": 0,
+        "result_sha256": "17109610cac556dafef0231244ad57975ca31d8145c1f0c655ebde655d6e9a02"
+      },
+      {
+        "suite": "ContinuousModeModelContract",
+        "scope": "implementation_local_suite",
+        "status": "PASS",
+        "reported_outcomes": 106,
+        "exit_code": 0,
+        "result_sha256": "8dc9c8f64a5dfe9f1eb9628f48ecb085bc4f2f5896d0b8de036b6e1f024d7a5c"
+      },
+      {
+        "suite": "ContinuousContracts",
+        "scope": "implementation_local_suite",
+        "status": "PASS",
+        "reported_outcomes": 10,
+        "exit_code": 0,
+        "result_sha256": "fb46d4e6cc431ff1a9296cbefa2cda107a88ef0fbf86d85bb04cf7220bbef5bc"
+      },
+      {
+        "suite": "StaticPackage",
+        "scope": "exact_public_file_manifest",
+        "status": "PASS",
+        "reported_outcomes": 41,
+        "exit_code": 0,
+        "result_sha256": "980272ccfe1ec982d5d413609dd238e8ff51f1d07d61d3d0b02c81ecfd87c118"
+      },
+      {
+        "suite": "Bootstrap",
+        "scope": "exact_public_file_manifest",
+        "status": "PASS",
+        "reported_outcomes": 17,
+        "exit_code": 0,
+        "result_sha256": "dbc2b6c65bb4c24696934a20fdf72e013209c9d2e27bb643f14443d76a554794"
+      }
+    ],
+    "initial_static_check": {
+      "status": "FAIL",
+      "passed": 39,
+      "failed": 2,
+      "exit_code": 1,
+      "result_sha256": "06a4797622fe33f257e407ca665579e03c8b07d1a5ad89f1735877192d2306d6",
+      "scope": "Implementation directory with ignored local audit reports; scanner incorrectly includes that report directory as package inputs.",
+      "failed_checks": [
+        "package.drive_letters.absent",
+        "package.version.consistent"
+      ],
+      "disposition": "Original failure retained. The unchanged checks passed on the exact public file manifest with no local reports. No assertion, product code or frozen control was changed."
+    }
+  },
+  "local_closeout_review_20261010": {
+    "reviewer": "independent closeout_publication_review",
+    "SPEC_COMPLIANCE": "PASS",
+    "QUALITY": "PASS",
+    "PUBLICATION_SCOPE_REVIEW": "PASS",
+    "critical": 0,
+    "important": 0,
+    "resolved_minor": 3,
+    "scope": "Eight changed source/status paths, smoke/reproduction receipts, three implementation suites and two exact-public-package checks. Not formal-model or stable-release acceptance.",
+    "conclusion": "Preserved initial failures and actual scope; no lowered identity/safety assertions, frozen model changes or raw evidence publication. Source/doc main update may proceed under current human authorization.",
+    "receipt_sha256": "535baec4055b27ffc7f34a9e5648b1a070b3efc6cfaa44fef35d99a430f03ca6"
   }
 }
