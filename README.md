@@ -28,6 +28,24 @@ Project Flight Control 是一个给 Codex 使用的项目管理 Skill。
 
 它不是新的 AI 模型，也不是一句“万能提示词”。它更像是一套工作秩序，让 AI 在做复杂项目时少跑偏、能复查、能继续。
 
+### 工作方式图解
+
+下面的图片展示了它如何从整理零散信息开始，逐步明确目标、分工执行、检查结果，并按记录继续推进：
+
+![项目资料线索散落、需要反复翻找](assets/project-overview/01-scattered-context.png)
+
+![先把项目目标、范围和完成标准说清楚](assets/project-overview/02-clarify-goal-scope.png)
+
+![目标管家、执行者和检查者分工协作](assets/project-overview/03-three-roles-independent-checks.png)
+
+![结果未通过时先修正，再由用户确认是否继续](assets/project-overview/04-review-repair-and-approval.png)
+
+![根据已记录的真实进度恢复工作](assets/project-overview/05-resume-from-recorded-state.png)
+
+![通过目标清晰、分工明确和验收闭环，减少反复沟通与返工](assets/project-overview/06-time-and-token-savings.png)
+
+> 最后一张图表达的是项目希望达到的方向；实际节省效果仍需通过完整项目评估确认。
+
 ## 二、适合谁用？
 
 ### 1、特别适合
